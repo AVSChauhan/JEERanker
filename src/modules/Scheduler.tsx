@@ -17,10 +17,17 @@ const HOURS = eachHourOfInterval({
 
 export default function Scheduler({ user }: { user: UserProfile }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [blocks, setBlocks] = useState<ScheduleBlock[]>([
-    { id: '1', title: 'Physics - Electrostatics', startTime: '09:00', endTime: '11:00', subject: 'Physics', date: format(new Date(), 'yyyy-MM-dd'), completed: false },
-    { id: '2', title: 'Maths - Integration', startTime: '14:00', endTime: '16:00', subject: 'Maths', date: format(new Date(), 'yyyy-MM-dd'), completed: true },
-  ]);
+  const [blocks, setBlocks] = useState<ScheduleBlock[]>(() => {
+    const saved = localStorage.getItem('warroom_blocks');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', title: 'Physics - Electrostatics', startTime: '09:00', endTime: '11:00', subject: 'Physics', date: format(new Date(), 'yyyy-MM-dd'), completed: false },
+      { id: '2', title: 'Maths - Integration', startTime: '14:00', endTime: '16:00', subject: 'Maths', date: format(new Date(), 'yyyy-MM-dd'), completed: true },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('warroom_blocks', JSON.stringify(blocks));
+  }, [blocks]);
   const [isAdding, setIsAdding] = useState(false);
   const [newBlock, setNewBlock] = useState({ title: '', startTime: '09:00', endTime: '10:00', subject: 'Physics' });
   const scrollRef = useRef<HTMLDivElement>(null);

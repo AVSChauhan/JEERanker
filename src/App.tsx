@@ -32,8 +32,8 @@ function cn(...inputs: ClassValue[]) {
 
 // --- Components ---
 
-const LoginScreen = ({ onLogin }: { onLogin: (user: UserID) => void }) => {
-  const [selectedUser, setSelectedUser] = useState<UserID | null>(null);
+const LoginScreen = ({ onLogin }: { onLogin: (name: string, id: UserID) => void }) => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +41,13 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: UserID) => void }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (password === APP_PASSWORD) {
-      if (selectedUser) onLogin(selectedUser);
+      if (username.trim()) {
+        // Assign a random ID or based on name for demo, but allow custom name
+        const id = username.toLowerCase().includes('av') ? 'AV' : 'GN';
+        onLogin(username, id);
+      } else {
+        setError('Enter a valid username');
+      }
     } else {
       setError('Invalid Access Code');
       setTimeout(() => setError(''), 3000);
@@ -50,7 +56,6 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: UserID) => void }) => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-dark-bg p-4 overflow-hidden relative">
-      {/* Animated Background Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-blue/10 blur-[120px] rounded-full" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-purple/10 blur-[120px] rounded-full" />
 
@@ -67,25 +72,16 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: UserID) => void }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            {(Object.keys(HARDCODED_USERS) as UserID[]).map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setSelectedUser(id)}
-                className={cn(
-                  "p-4 rounded-xl border transition-all duration-300 flex flex-col items-center gap-2",
-                  selectedUser === id 
-                    ? "bg-neon-blue/10 border-neon-blue neon-glow" 
-                    : "bg-white/5 border-white/10 hover:border-white/30"
-                )}
-              >
-                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold">
-                  {HARDCODED_USERS[id].avatar}
-                </div>
-                <span className="font-medium">{HARDCODED_USERS[id].name}</span>
-              </button>
-            ))}
+          <div className="space-y-2">
+            <label className="text-xs uppercase tracking-wider text-white/40 ml-1">Agent Identity</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-blue transition-colors"
+              placeholder="Enter your name..."
+              required
+            />
           </div>
 
           <div className="space-y-2">
@@ -121,8 +117,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: UserID) => void }) => {
 
           <button
             type="submit"
-            disabled={!selectedUser}
-            className="w-full py-4 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-widest text-sm"
+            className="w-full py-4 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all uppercase tracking-widest text-sm"
           >
             Initialize System
           </button>
@@ -153,8 +148,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isChatUnlocked, setIsChatUnlocked] = useState(false);
-  const [logoTapCount, setLogoTapCount] = useState(0);
   const [isFocusMode, setIsFocusMode] = useState(false);
+  const [logoPressTimer, setLogoPressTimer] = useState<NodeJS.Timeout | null>(null);
 
   // Load user from local storage on mount (for persistence)
   useEffect(() => {
@@ -164,8 +159,9 @@ export default function App() {
     }
   }, []);
 
-  const handleLogin = (id: UserID) => {
+  const handleLogin = (name: string, id: UserID) => {
     const profile = getInitialProfile(id);
+    profile.displayName = name;
     setUser(profile);
     localStorage.setItem('warroom_user', JSON.stringify(profile));
   };
@@ -175,14 +171,18 @@ export default function App() {
     localStorage.removeItem('warroom_user');
   };
 
-  const handleLogoTap = () => {
-    const newCount = logoTapCount + 1;
-    setLogoTapCount(newCount);
-    if (newCount === 3) {
+  const handleLogoMouseDown = () => {
+    const timer = setTimeout(() => {
       setIsChatUnlocked(!isChatUnlocked);
-      setLogoTapCount(0);
+    }, 3000);
+    setLogoPressTimer(timer);
+  };
+
+  const handleLogoMouseUp = () => {
+    if (logoPressTimer) {
+      clearTimeout(logoPressTimer);
+      setLogoPressTimer(null);
     }
-    setTimeout(() => setLogoTapCount(0), 1000);
   };
 
   if (!user) {
@@ -217,7 +217,11 @@ export default function App() {
         >
           <div 
             className="p-6 flex items-center gap-3 cursor-pointer select-none"
-            onClick={handleLogoTap}
+            onMouseDown={handleLogoMouseDown}
+            onMouseUp={handleLogoMouseUp}
+            onMouseLeave={handleLogoMouseUp}
+            onTouchStart={handleLogoMouseDown}
+            onTouchEnd={handleLogoMouseUp}
           >
             <div className="w-10 h-10 bg-neon-blue rounded-lg flex items-center justify-center flex-shrink-0">
               <Zap className="text-black" size={24} />

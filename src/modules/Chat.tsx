@@ -17,6 +17,29 @@ export default function Chat({ user }: { user: UserProfile }) {
   const [inputText, setInputText] = useState('');
   const [isEncrypted, setIsEncrypted] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // WebSocket connection
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const ws = new WebSocket(`${protocol}//${window.location.host}`);
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      const payload = JSON.parse(event.data);
+      if (payload.type === 'init') {
+        setMessages(payload.data);
+      } else if (payload.type === 'message') {
+        setMessages(prev => {
+          // Prevent duplicates
+          if (prev.some(m => m.id === payload.data.id)) return prev;
+          return [...prev, payload.data];
+        });
+      }
+    };
+
+    return () => ws.close();
+  }, []);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -27,7 +50,7 @@ export default function Chat({ user }: { user: UserProfile }) {
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !wsRef.current) return;
 
     const encryptedText = isEncrypted ? encrypt(inputText, APP_PASSWORD) : inputText;
     
@@ -38,7 +61,7 @@ export default function Chat({ user }: { user: UserProfile }) {
       timestamp: Date.now(),
     };
 
-    setMessages([...messages, newMessage]);
+    wsRef.current.send(JSON.stringify(newMessage));
     setInputText('');
   };
 

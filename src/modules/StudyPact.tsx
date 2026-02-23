@@ -10,15 +10,22 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function StudyPactModule({ user }: { user: UserProfile }) {
-  const [pact, setPact] = useState<StudyPact>({
-    id: '1',
-    goal: 'Clear JEE Advanced with <1000 Rank',
-    minHoursPerDay: 10,
-    weeklyTarget: 70,
-    penalty: 'No Gaming for 1 Week + 100 Pushups',
-    startDate: Date.now(),
-    active: true
+  const [pact, setPact] = useState<StudyPact>(() => {
+    const saved = localStorage.getItem('warroom_pact');
+    return saved ? JSON.parse(saved) : {
+      id: '1',
+      goal: 'Clear JEE Advanced with <1000 Rank',
+      minHoursPerDay: 10,
+      weeklyTarget: 70,
+      penalty: 'No Gaming for 1 Week + 100 Pushups',
+      startDate: Date.now(),
+      active: true
+    };
   });
+
+  React.useEffect(() => {
+    localStorage.setItem('warroom_pact', JSON.stringify(pact));
+  }, [pact]);
   const [isEditing, setIsEditing] = useState(false);
   const [editPact, setEditPact] = useState({ ...pact });
 

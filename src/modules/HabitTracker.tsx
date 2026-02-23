@@ -10,11 +10,18 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function HabitTracker({ user }: { user: UserProfile }) {
-  const [habits, setHabits] = useState<Habit[]>([
-    { id: '1', name: 'Morning Revision', streak: 12, completedToday: true, history: {} },
-    { id: '2', name: 'Solve 10 MCQ Physics', streak: 5, completedToday: false, history: {} },
-    { id: '3', name: 'Meditation', streak: 21, completedToday: true, history: {} },
-  ]);
+  const [habits, setHabits] = useState<Habit[]>(() => {
+    const saved = localStorage.getItem('warroom_habits');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', name: 'Morning Revision', streak: 12, completedToday: true, history: {} },
+      { id: '2', name: 'Solve 10 MCQ Physics', streak: 5, completedToday: false, history: {} },
+      { id: '3', name: 'Meditation', streak: 21, completedToday: true, history: {} },
+    ];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('warroom_habits', JSON.stringify(habits));
+  }, [habits]);
   const [isAddingHabit, setIsAddingHabit] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
 

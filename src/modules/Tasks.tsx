@@ -11,11 +11,18 @@ function cn(...inputs: ClassValue[]) {
 
 export default function Tasks({ user }: { user: UserProfile }) {
   const [view, setView] = useState<'list' | 'kanban'>('list');
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', title: 'Solve Irodov - Mechanics', subject: 'Physics', priority: 'high', status: 'todo', estimatedMinutes: 120, isShared: true },
-    { id: '2', title: 'Revise Complex Numbers', subject: 'Maths', priority: 'medium', status: 'in-progress', estimatedMinutes: 90, isShared: false },
-    { id: '3', title: 'Organic Chemistry Notes', subject: 'Chemistry', priority: 'low', status: 'done', estimatedMinutes: 60, isShared: true },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const saved = localStorage.getItem('warroom_tasks');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', title: 'Solve Irodov - Mechanics', subject: 'Physics', priority: 'high', status: 'todo', estimatedMinutes: 120, isShared: true },
+      { id: '2', title: 'Revise Complex Numbers', subject: 'Maths', priority: 'medium', status: 'in-progress', estimatedMinutes: 90, isShared: false },
+      { id: '3', title: 'Organic Chemistry Notes', subject: 'Chemistry', priority: 'low', status: 'done', estimatedMinutes: 60, isShared: true },
+    ];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('warroom_tasks', JSON.stringify(tasks));
+  }, [tasks]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', subject: 'Physics', priority: 'medium' as const });

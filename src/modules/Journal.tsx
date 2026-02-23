@@ -12,10 +12,17 @@ function cn(...inputs: ClassValue[]) {
 export default function Journal({ user }: { user: UserProfile }) {
   const [isLocked, setIsLocked] = useState(true);
   const [password, setPassword] = useState('');
-  const [entries] = useState([
-    { id: '1', date: '2024-03-20', title: 'Feeling Burnt Out', content: 'Today was tough. Rotational motion is killing me. Need to take a break.', mood: '😫' },
-    { id: '2', date: '2024-03-19', title: 'Mock Test Success', content: 'Scored 260! Finally seeing progress in Maths.', mood: '🔥' },
-  ]);
+  const [entries, setEntries] = useState(() => {
+    const saved = localStorage.getItem('warroom_journal');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', date: '2024-03-20', title: 'Feeling Burnt Out', content: 'Today was tough. Rotational motion is killing me. Need to take a break.', mood: '😫' },
+      { id: '2', date: '2024-03-19', title: 'Mock Test Success', content: 'Scored 260! Finally seeing progress in Maths.', mood: '🔥' },
+    ];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('warroom_journal', JSON.stringify(entries));
+  }, [entries]);
 
   const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();

@@ -11,10 +11,17 @@ function cn(...inputs: ClassValue[]) {
 }
 
 export default function Notes({ user }: { user: UserProfile }) {
-  const [notes, setNotes] = useState<Note[]>([
-    { id: '1', title: 'Rotational Dynamics Summary', content: '# Rotational Dynamics\n\nKey formulas:\n- Torque: $\\tau = r \\times F$\n- Angular Momentum: $L = I\\omega$\n- Moment of Inertia for a disc: $I = \\frac{1}{2}MR^2$', folder: 'Physics', subject: 'Physics', lastModified: Date.now(), isPinned: true, isShared: true },
-    { id: '2', title: 'Organic Chemistry Roadmap', content: '## Reaction Mechanisms\n1. SN1 vs SN2\n2. E1 vs E2\n3. Nucleophilic Addition', folder: 'Chemistry', subject: 'Chemistry', lastModified: Date.now() - 86400000, isPinned: false, isShared: false },
-  ]);
+  const [notes, setNotes] = useState<Note[]>(() => {
+    const saved = localStorage.getItem('warroom_notes');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', title: 'Rotational Dynamics Summary', content: '# Rotational Dynamics\n\nKey formulas:\n- Torque: $\\tau = r \\times F$\n- Angular Momentum: $L = I\\omega$\n- Moment of Inertia for a disc: $I = \\frac{1}{2}MR^2$', folder: 'Physics', subject: 'Physics', lastModified: Date.now(), isPinned: true, isShared: true },
+      { id: '2', title: 'Organic Chemistry Roadmap', content: '## Reaction Mechanisms\n1. SN1 vs SN2\n2. E1 vs E2\n3. Nucleophilic Addition', folder: 'Chemistry', subject: 'Chemistry', lastModified: Date.now() - 86400000, isPinned: false, isShared: false },
+    ];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('warroom_notes', JSON.stringify(notes));
+  }, [notes]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);

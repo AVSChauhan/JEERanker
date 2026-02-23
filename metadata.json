@@ -1,0 +1,7 @@
+{
+  "name": "JEERanker WARROOM",
+  "description": "Ultimate JEE Buddy – Dual Study Operating System for AV & GN",
+  "requestFramePermissions": [
+    "notifications"
+  ]
+}

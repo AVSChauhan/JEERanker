@@ -10,25 +10,54 @@ async function startServer() {
   const wss = new WebSocketServer({ server });
 
   const PORT = 3000;
-  const messages: any[] = [];
+  
+  // In-memory store (for production, this would be a database)
+  const store: Record<string, any[]> = {
+    chat: [],
+    tasks: [],
+    notes: [],
+    habits: [],
+    blocks: [],
+    calendar: [],
+    journal: []
+  };
 
   // WebSocket logic
   wss.on("connection", (ws) => {
     console.log("Client connected");
     
-    // Send existing messages to new client
-    ws.send(JSON.stringify({ type: 'init', data: messages }));
+    // Send all initial data to new client
+    ws.send(JSON.stringify({ type: 'init_all', data: store }));
 
     ws.on("message", (data) => {
-      const msg = JSON.parse(data.toString());
-      messages.push(msg);
-      
-      // Broadcast to all clients
-      wss.clients.forEach((client) => {
-        if (client.readyState === WebSocket.OPEN) {
-          client.send(JSON.stringify({ type: 'message', data: msg }));
+      try {
+        const payload = JSON.parse(data.toString());
+        const { type, collection, data: item } = payload;
+
+        if (type === 'sync' && collection && store[collection]) {
+          // Update store
+          if (Array.isArray(item)) {
+            store[collection] = item;
+          } else {
+            // Handle single item update/create
+            const index = store[collection].findIndex(i => i.id === item.id);
+            if (index !== -1) {
+              store[collection][index] = item;
+            } else {
+              store[collection].push(item);
+            }
+          }
+
+          // Broadcast change to all clients
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify({ type: 'sync', collection, data: store[collection] }));
+            }
+          });
         }
-      });
+      } catch (e) {
+        console.error("Error processing message:", e);
+      }
     });
 
     ws.on("close", () => {

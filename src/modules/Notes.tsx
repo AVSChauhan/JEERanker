@@ -10,18 +10,10 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function Notes({ user }: { user: UserProfile }) {
-  const [notes, setNotes] = useState<Note[]>(() => {
-    const saved = localStorage.getItem('warroom_notes');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Rotational Dynamics Summary', content: '# Rotational Dynamics\n\nKey formulas:\n- Torque: $\\tau = r \\times F$\n- Angular Momentum: $L = I\\omega$\n- Moment of Inertia for a disc: $I = \\frac{1}{2}MR^2$', folder: 'Physics', subject: 'Physics', lastModified: Date.now(), isPinned: true, isShared: true },
-      { id: '2', title: 'Organic Chemistry Roadmap', content: '## Reaction Mechanisms\n1. SN1 vs SN2\n2. E1 vs E2\n3. Nucleophilic Addition', folder: 'Chemistry', subject: 'Chemistry', lastModified: Date.now() - 86400000, isPinned: false, isShared: false },
-    ];
-  });
+import { useSync } from '../lib/sync';
 
-  React.useEffect(() => {
-    localStorage.setItem('warroom_notes', JSON.stringify(notes));
-  }, [notes]);
+export default function Notes({ user }: { user: UserProfile }) {
+  const [notes, syncNotes] = useSync<Note>('notes');
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -45,7 +37,7 @@ export default function Notes({ user }: { user: UserProfile }) {
       isPinned: false,
       isShared: false
     };
-    setNotes([newNote, ...notes]);
+    syncNotes([...notes, newNote]);
     setSelectedNote(newNote);
     setIsEditing(true);
     setEditContent({ title: newNote.title, content: newNote.content, folder: newNote.folder });
@@ -59,13 +51,13 @@ export default function Notes({ user }: { user: UserProfile }) {
       }
       return n;
     });
-    setNotes(updatedNotes);
+    syncNotes(updatedNotes);
     setIsEditing(false);
     setSelectedNote({ ...selectedNote, ...editContent });
   };
 
   const deleteNote = (id: string) => {
-    setNotes(notes.filter(n => n.id !== id));
+    syncNotes(notes.filter(n => n.id !== id));
     if (selectedNote?.id === id) setSelectedNote(null);
   };
 

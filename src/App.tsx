@@ -18,8 +18,14 @@ import {
   EyeOff,
   Database,
   Shield,
-  Brain
+  Brain,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  X,
+  Calendar as CalendarIcon
 } from 'lucide-react';
+import SharedCalendar from './modules/SharedCalendar';
 import { UserID, UserProfile } from './types';
 import { HARDCODED_USERS, APP_PASSWORD, getInitialProfile } from './lib/auth';
 import { clsx, type ClassValue } from 'clsx';
@@ -193,6 +199,7 @@ export default function App() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'scheduler', label: 'Day Scheduler', icon: Clock },
     { id: 'timer', label: 'Study Timer', icon: Zap },
+    { id: 'calendar', label: 'War Calendar', icon: CalendarIcon },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'notes', label: 'Notes', icon: BookOpen },
     { id: 'resources', label: 'Vault', icon: Database },
@@ -344,6 +351,7 @@ export default function App() {
               {activeTab === 'dashboard' && <Dashboard user={user} />}
               {activeTab === 'scheduler' && <Scheduler user={user} />}
               {activeTab === 'timer' && <Timer user={user} />}
+              {activeTab === 'calendar' && <SharedCalendar user={user} />}
               {activeTab === 'tasks' && <Tasks user={user} />}
               {activeTab === 'chat' && <Chat user={user} />}
               {activeTab === 'notes' && <Notes user={user} />}

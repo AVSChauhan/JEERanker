@@ -15,19 +15,11 @@ const HOURS = eachHourOfInterval({
   end: addDays(startOfDay(new Date()), 1)
 }).slice(0, 24);
 
+import { useSync } from '../lib/sync';
+
 export default function Scheduler({ user }: { user: UserProfile }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [blocks, setBlocks] = useState<ScheduleBlock[]>(() => {
-    const saved = localStorage.getItem('warroom_blocks');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Physics - Electrostatics', startTime: '09:00', endTime: '11:00', subject: 'Physics', date: format(new Date(), 'yyyy-MM-dd'), completed: false },
-      { id: '2', title: 'Maths - Integration', startTime: '14:00', endTime: '16:00', subject: 'Maths', date: format(new Date(), 'yyyy-MM-dd'), completed: true },
-    ];
-  });
-
-  useEffect(() => {
-    localStorage.setItem('warroom_blocks', JSON.stringify(blocks));
-  }, [blocks]);
+  const [blocks, syncBlocks] = useSync<ScheduleBlock>('blocks');
   const [isAdding, setIsAdding] = useState(false);
   const [newBlock, setNewBlock] = useState({ title: '', startTime: '09:00', endTime: '10:00', subject: 'Physics' });
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -62,13 +54,14 @@ export default function Scheduler({ user }: { user: UserProfile }) {
       completed: false
     };
 
-    setBlocks([...blocks, block]);
+    syncBlocks([...blocks, block]);
     setNewBlock({ title: '', startTime: '09:00', endTime: '10:00', subject: 'Physics' });
     setIsAdding(false);
   };
 
   const toggleBlock = (id: string) => {
-    setBlocks(blocks.map(b => b.id === id ? { ...b, completed: !b.completed } : b));
+    const updatedBlocks = blocks.map(b => b.id === id ? { ...b, completed: !b.completed } : b);
+    syncBlocks(updatedBlocks);
   };
 
   return (

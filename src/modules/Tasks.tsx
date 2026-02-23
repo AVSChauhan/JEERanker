@@ -9,20 +9,11 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+import { useSync } from '../lib/sync';
+
 export default function Tasks({ user }: { user: UserProfile }) {
   const [view, setView] = useState<'list' | 'kanban'>('list');
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    const saved = localStorage.getItem('warroom_tasks');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Solve Irodov - Mechanics', subject: 'Physics', priority: 'high', status: 'todo', estimatedMinutes: 120, isShared: true },
-      { id: '2', title: 'Revise Complex Numbers', subject: 'Maths', priority: 'medium', status: 'in-progress', estimatedMinutes: 90, isShared: false },
-      { id: '3', title: 'Organic Chemistry Notes', subject: 'Chemistry', priority: 'low', status: 'done', estimatedMinutes: 60, isShared: true },
-    ];
-  });
-
-  React.useEffect(() => {
-    localStorage.setItem('warroom_tasks', JSON.stringify(tasks));
-  }, [tasks]);
+  const [tasks, syncTasks] = useSync<Task>('tasks');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', subject: 'Physics', priority: 'medium' as const });
@@ -33,16 +24,17 @@ export default function Tasks({ user }: { user: UserProfile }) {
   );
 
   const toggleTaskStatus = (id: string) => {
-    setTasks(tasks.map(t => {
+    const updatedTasks = tasks.map(t => {
       if (t.id === id) {
         return { ...t, status: t.status === 'done' ? 'todo' : 'done' };
       }
       return t;
-    }));
+    });
+    syncTasks(updatedTasks);
   };
 
   const deleteTask = (id: string) => {
-    setTasks(tasks.filter(t => t.id !== id));
+    syncTasks(tasks.filter(t => t.id !== id));
   };
 
   const addTask = (e: React.FormEvent) => {
@@ -59,7 +51,7 @@ export default function Tasks({ user }: { user: UserProfile }) {
       isShared: false,
     };
 
-    setTasks([task, ...tasks]);
+    syncTasks([...tasks, task]);
     setNewTask({ title: '', subject: 'Physics', priority: 'medium' });
     setIsAddingTask(false);
   };

@@ -9,26 +9,18 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function HabitTracker({ user }: { user: UserProfile }) {
-  const [habits, setHabits] = useState<Habit[]>(() => {
-    const saved = localStorage.getItem('warroom_habits');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', name: 'Morning Revision', streak: 12, completedToday: true, history: {} },
-      { id: '2', name: 'Solve 10 MCQ Physics', streak: 5, completedToday: false, history: {} },
-      { id: '3', name: 'Meditation', streak: 21, completedToday: true, history: {} },
-    ];
-  });
+import { useSync } from '../lib/sync';
 
-  React.useEffect(() => {
-    localStorage.setItem('warroom_habits', JSON.stringify(habits));
-  }, [habits]);
+export default function HabitTracker({ user }: { user: UserProfile }) {
+  const [habits, syncHabits] = useSync<Habit>('habits');
   const [isAddingHabit, setIsAddingHabit] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
 
   const toggleHabit = (id: string) => {
-    setHabits(habits.map(h => 
+    const updatedHabits = habits.map(h => 
       h.id === id ? { ...h, completedToday: !h.completedToday, streak: !h.completedToday ? h.streak + 1 : Math.max(0, h.streak - 1) } : h
-    ));
+    );
+    syncHabits(updatedHabits);
   };
 
   const addHabit = (e: React.FormEvent) => {
@@ -43,13 +35,13 @@ export default function HabitTracker({ user }: { user: UserProfile }) {
       history: {}
     };
 
-    setHabits([...habits, habit]);
+    syncHabits([...habits, habit]);
     setNewHabitName('');
     setIsAddingHabit(false);
   };
 
   const deleteHabit = (id: string) => {
-    setHabits(habits.filter(h => h.id !== id));
+    syncHabits(habits.filter(h => h.id !== id));
   };
 
   return (

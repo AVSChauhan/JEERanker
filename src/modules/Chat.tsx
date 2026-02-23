@@ -12,57 +12,66 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+import { useSync } from '../lib/sync';
+
+import { GoogleGenAI } from "@google/genai";
+import ReactMarkdown from 'react-markdown';
+
 export default function Chat({ user }: { user: UserProfile }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, syncMessages] = useSync<ChatMessage>('chat');
   const [inputText, setInputText] = useState('');
   const [isEncrypted, setIsEncrypted] = useState(true);
+  const [isResearchMode, setIsResearchMode] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
 
-  // WebSocket connection
-  useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}`);
-    wsRef.current = ws;
-
-    ws.onmessage = (event) => {
-      const payload = JSON.parse(event.data);
-      if (payload.type === 'init') {
-        setMessages(payload.data);
-      } else if (payload.type === 'message') {
-        setMessages(prev => {
-          // Prevent duplicates
-          if (prev.some(m => m.id === payload.data.id)) return prev;
-          return [...prev, payload.data];
-        });
-      }
-    };
-
-    return () => ws.close();
-  }, []);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
-
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim() || !wsRef.current) return;
+    if (!inputText.trim()) return;
 
-    const encryptedText = isEncrypted ? encrypt(inputText, APP_PASSWORD) : inputText;
-    
-    const newMessage: ChatMessage = {
+    const textToSend = inputText;
+    setInputText('');
+
+    // 1. Send user message
+    const encryptedText = isEncrypted ? encrypt(textToSend, APP_PASSWORD) : textToSend;
+    const userMsg: ChatMessage = {
       id: Date.now().toString(),
       senderId: user.id,
       text: encryptedText,
       timestamp: Date.now(),
     };
+    syncMessages(userMsg);
 
-    wsRef.current.send(JSON.stringify(newMessage));
-    setInputText('');
+    // 2. If research mode, trigger AI with grounding
+    if (isResearchMode) {
+      setIsGenerating(true);
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: textToSend,
+          config: {
+            tools: [{ googleSearch: {} }],
+            systemInstruction: "You are a JEE Research Assistant. Provide accurate information using Google Search grounding. Format your response in Markdown."
+          },
+        });
+
+        const aiText = response.text || "I couldn't find any information on that.";
+        const encryptedAiText = isEncrypted ? encrypt(aiText, APP_PASSWORD) : aiText;
+        
+        const aiMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          senderId: 'AI_ORACLE' as any,
+          text: encryptedAiText,
+          timestamp: Date.now(),
+        };
+        syncMessages(aiMsg);
+      } catch (error) {
+        console.error("AI Error:", error);
+      } finally {
+        setIsGenerating(false);
+      }
+    }
   };
 
   const getDecryptedText = (text: string) => {
@@ -90,25 +99,40 @@ export default function Chat({ user }: { user: UserProfile }) {
           </div>
         </div>
         
-        <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+        <div className="flex items-center gap-4">
           <button 
-            onClick={() => setIsEncrypted(true)}
+            onClick={() => setIsResearchMode(!isResearchMode)}
             className={cn(
-              "p-2 rounded-lg transition-all",
-              isEncrypted ? "bg-neon-blue text-black" : "text-white/40 hover:text-white"
+              "flex items-center gap-2 px-4 py-2 rounded-xl border transition-all text-[10px] font-bold uppercase tracking-widest",
+              isResearchMode 
+                ? "bg-neon-purple/20 border-neon-purple text-neon-purple shadow-[0_0_15px_rgba(168,85,247,0.2)]" 
+                : "bg-white/5 border-white/10 text-white/40 hover:text-white"
             )}
           >
-            <Lock size={16} />
+            <Brain size={14} />
+            <span>Research Mode</span>
           </button>
-          <button 
-            onClick={() => setIsEncrypted(false)}
-            className={cn(
-              "p-2 rounded-lg transition-all",
-              !isEncrypted ? "bg-white text-black" : "text-white/40 hover:text-white"
-            )}
-          >
-            <Search size={16} />
-          </button>
+          
+          <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
+            <button 
+              onClick={() => setIsEncrypted(true)}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                isEncrypted ? "bg-neon-blue text-black" : "text-white/40 hover:text-white"
+              )}
+            >
+              <Lock size={16} />
+            </button>
+            <button 
+              onClick={() => setIsEncrypted(false)}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                !isEncrypted ? "bg-white text-black" : "text-white/40 hover:text-white"
+              )}
+            >
+              <Eye size={16} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -125,6 +149,7 @@ export default function Chat({ user }: { user: UserProfile }) {
           
           {messages.map((msg) => {
             const isMe = msg.senderId === user.id;
+            const isAI = msg.senderId === 'AI_ORACLE';
             return (
               <motion.div
                 key={msg.id}
@@ -137,7 +162,7 @@ export default function Chat({ user }: { user: UserProfile }) {
               >
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                    {msg.senderId}
+                    {isAI ? 'ORACLE' : isMe ? 'You' : 'Partner'}
                   </span>
                   <span className="text-[10px] text-white/20">
                     {format(msg.timestamp, 'HH:mm')}
@@ -145,15 +170,26 @@ export default function Chat({ user }: { user: UserProfile }) {
                 </div>
                 <div className={cn(
                   "px-4 py-2.5 rounded-2xl text-sm leading-relaxed",
+                  isAI ? "bg-neon-purple/10 border border-neon-purple/30 text-white markdown-body" :
                   isMe 
                     ? "bg-neon-blue text-black font-medium rounded-tr-none" 
                     : "bg-white/10 text-white rounded-tl-none border border-white/5"
                 )}>
-                  {getDecryptedText(msg.text)}
+                  {isAI ? (
+                    <ReactMarkdown>{getDecryptedText(msg.text)}</ReactMarkdown>
+                  ) : (
+                    getDecryptedText(msg.text)
+                  )}
                 </div>
               </motion.div>
             );
           })}
+          {isGenerating && (
+            <div className="flex items-center gap-3 text-neon-purple animate-pulse p-4">
+              <Brain size={16} className="animate-bounce" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Oracle is researching...</span>
+            </div>
+          )}
         </div>
 
         {/* Input Area */}

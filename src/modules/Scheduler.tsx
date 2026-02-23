@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Plus, ChevronLeft, ChevronRight, Clock, MoreVertical, CheckCircle2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Plus, ChevronLeft, ChevronRight, Clock, MoreVertical, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import { format, addDays, subDays, startOfDay, eachHourOfInterval, isSameDay } from 'date-fns';
 import { ScheduleBlock, UserProfile } from '../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -17,8 +17,12 @@ const HOURS = eachHourOfInterval({
 
 export default function Scheduler({ user }: { user: UserProfile }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [blocks, setBlocks] = useState<ScheduleBlock[]>([]);
+  const [blocks, setBlocks] = useState<ScheduleBlock[]>([
+    { id: '1', title: 'Physics - Electrostatics', startTime: '09:00', endTime: '11:00', subject: 'Physics', date: format(new Date(), 'yyyy-MM-dd'), completed: false },
+    { id: '2', title: 'Maths - Integration', startTime: '14:00', endTime: '16:00', subject: 'Maths', date: format(new Date(), 'yyyy-MM-dd'), completed: true },
+  ]);
   const [isAdding, setIsAdding] = useState(false);
+  const [newBlock, setNewBlock] = useState({ title: '', startTime: '09:00', endTime: '10:00', subject: 'Physics' });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to current time
@@ -37,7 +41,27 @@ export default function Scheduler({ user }: { user: UserProfile }) {
   };
 
   const durationToHeight = (start: string, end: string) => {
-    return timeToPosition(end) - timeToPosition(start);
+    return Math.max(40, timeToPosition(end) - timeToPosition(start));
+  };
+
+  const addBlock = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBlock.title.trim()) return;
+
+    const block: ScheduleBlock = {
+      id: Date.now().toString(),
+      ...newBlock,
+      date: format(currentDate, 'yyyy-MM-dd'),
+      completed: false
+    };
+
+    setBlocks([...blocks, block]);
+    setNewBlock({ title: '', startTime: '09:00', endTime: '10:00', subject: 'Physics' });
+    setIsAdding(false);
+  };
+
+  const toggleBlock = (id: string) => {
+    setBlocks(blocks.map(b => b.id === id ? { ...b, completed: !b.completed } : b));
   };
 
   return (
@@ -64,6 +88,76 @@ export default function Scheduler({ user }: { user: UserProfile }) {
           <span>Add Block</span>
         </button>
       </div>
+
+      {/* Add Block Modal */}
+      <AnimatePresence>
+        {isAdding && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-md glass-card p-8 border-neon-blue/30"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-xl font-display font-bold">Plan New Block</h4>
+                <button onClick={() => setIsAdding(false)} className="text-white/40 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={addBlock} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Block Title</label>
+                  <input 
+                    autoFocus
+                    type="text"
+                    value={newBlock.title}
+                    onChange={(e) => setNewBlock({ ...newBlock, title: e.target.value })}
+                    placeholder="e.g. Solve Irodov Mechanics"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Start Time</label>
+                    <input 
+                      type="time"
+                      value={newBlock.startTime}
+                      onChange={(e) => setNewBlock({ ...newBlock, startTime: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">End Time</label>
+                    <input 
+                      type="time"
+                      value={newBlock.endTime}
+                      onChange={(e) => setNewBlock({ ...newBlock, endTime: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Subject</label>
+                  <select 
+                    value={newBlock.subject}
+                    onChange={(e) => setNewBlock({ ...newBlock, subject: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors appearance-none"
+                  >
+                    <option value="Physics">Physics</option>
+                    <option value="Maths">Maths</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+                <button className="w-full py-4 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all uppercase tracking-widest text-sm">
+                  Commit to Schedule
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Timeline Container */}
       <div className="flex-1 glass-card overflow-hidden flex flex-col">
@@ -98,6 +192,7 @@ export default function Scheduler({ user }: { user: UserProfile }) {
                 key={block.id}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
+                onClick={() => toggleBlock(block.id)}
                 className={cn(
                   "absolute left-0 right-0 rounded-xl p-3 border pointer-events-auto cursor-pointer group transition-all",
                   block.completed 
@@ -116,13 +211,13 @@ export default function Scheduler({ user }: { user: UserProfile }) {
                     </p>
                     <h4 className="font-bold text-sm leading-tight">{block.title}</h4>
                   </div>
-                  <button className="p-1 text-white/20 hover:text-white group-hover:opacity-100 opacity-0 transition-opacity">
-                    <MoreVertical size={14} />
-                  </button>
+                  {block.completed && <CheckCircle2 size={14} className="text-green-500" />}
                 </div>
-                <div className="mt-auto flex items-center gap-2 text-[10px] text-white/40">
-                  <Clock size={10} />
-                  <span>{block.startTime} - {block.endTime}</span>
+                <div className="mt-auto flex items-center justify-between text-[10px] text-white/40">
+                  <div className="flex items-center gap-2">
+                    <Clock size={10} />
+                    <span>{block.startTime} - {block.endTime}</span>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -142,7 +237,9 @@ export default function Scheduler({ user }: { user: UserProfile }) {
             </div>
           </div>
           <p className="text-xs font-mono text-white/40">
-            Total Planned: <span className="text-white font-bold">8.5h</span>
+            Total Planned: <span className="text-white font-bold">
+              {(blocks.filter(b => b.date === format(currentDate, 'yyyy-MM-dd')).length * 2).toFixed(1)}h
+            </span>
           </p>
         </div>
       </div>

@@ -39,7 +39,7 @@ export interface StudySession {
 
 export interface Task {
   id: string;
-  userId: string;
+  userId?: string;
   title: string;
   subject: string;
   priority: 'low' | 'medium' | 'high';
@@ -47,30 +47,32 @@ export interface Task {
   dueDate?: number;
   estimatedMinutes?: number;
   isShared: boolean;
-  subtasks: { id: string; title: string; completed: boolean }[];
+  subtasks?: { id: string; title: string; completed: boolean }[];
 }
 
 export interface ScheduleBlock {
   id: string;
-  userId: string;
+  userId?: string;
   title: string;
   subject: string;
   startTime: string; // HH:MM
   endTime: string; // HH:MM
   date: string; // YYYY-MM-DD
-  isShared: boolean;
+  isShared?: boolean;
   completed: boolean;
 }
 
 export interface Note {
   id: string;
-  userId: string;
+  userId?: string;
   title: string;
   content: string;
   subject: string;
   folder: string;
-  isShared: boolean;
-  updatedAt: number;
+  isShared?: boolean;
+  updatedAt?: number;
+  lastModified?: number;
+  isPinned?: boolean;
 }
 
 export interface ChatMessage {

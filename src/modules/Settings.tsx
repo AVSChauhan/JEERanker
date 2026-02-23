@@ -91,7 +91,10 @@ export default function Settings({ user }: { user: UserProfile }) {
         ))}
 
         <div className="pt-4">
-          <button className="w-full p-4 glass-card border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-3 font-bold text-sm uppercase tracking-widest">
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full p-4 glass-card border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-3 font-bold text-sm uppercase tracking-widest"
+          >
             <LogOut size={18} />
             <span>Terminate Session</span>
           </button>

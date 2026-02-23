@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Shield, AlertTriangle, Target, Handshake, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Shield, AlertTriangle, Target, Handshake, CheckCircle2, XCircle, Info, Edit2, X, Save } from 'lucide-react';
 import { UserProfile, StudyPact } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -19,16 +19,98 @@ export default function StudyPactModule({ user }: { user: UserProfile }) {
     startDate: Date.now(),
     active: true
   });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editPact, setEditPact] = useState({ ...pact });
+
+  const handleSave = () => {
+    setPact(editPact);
+    setIsEditing(false);
+  };
 
   return (
     <div className="h-full flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h3 className="font-display font-bold text-2xl tracking-tight">The Blood Pact</h3>
-        <div className="px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-          <Shield size={12} />
-          Binding Agreement
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsEditing(true)}
+            className="p-2 bg-white/5 border border-white/10 rounded-xl text-white/40 hover:text-white transition-all"
+          >
+            <Edit2 size={18} />
+          </button>
+          <div className="px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+            <Shield size={12} />
+            Binding Agreement
+          </div>
         </div>
       </div>
+
+      {/* Edit Pact Modal */}
+      <AnimatePresence>
+        {isEditing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-md glass-card p-8 border-red-500/30"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-xl font-display font-bold">Rewrite the Pact</h4>
+                <button onClick={() => setIsEditing(false)} className="text-white/40 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Ultimate Goal</label>
+                  <input 
+                    type="text"
+                    value={editPact.goal}
+                    onChange={(e) => setEditPact({ ...editPact, goal: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Daily Hours</label>
+                    <input 
+                      type="number"
+                      value={editPact.minHoursPerDay}
+                      onChange={(e) => setEditPact({ ...editPact, minHoursPerDay: Number(e.target.value) })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Weekly Target</label>
+                    <input 
+                      type="number"
+                      value={editPact.weeklyTarget}
+                      onChange={(e) => setEditPact({ ...editPact, weeklyTarget: Number(e.target.value) })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 transition-colors"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">The Penalty</label>
+                  <textarea 
+                    value={editPact.penalty}
+                    onChange={(e) => setEditPact({ ...editPact, penalty: e.target.value })}
+                    className="w-full h-24 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 transition-colors resize-none"
+                  />
+                </div>
+                <button 
+                  onClick={handleSave}
+                  className="w-full py-4 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-all uppercase tracking-widest text-sm flex items-center justify-center gap-2"
+                >
+                  <Save size={18} />
+                  Seal the Pact
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">

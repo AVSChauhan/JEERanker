@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Brain, TrendingUp, Target, Zap, AlertCircle, Sparkles, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Brain, TrendingUp, Target, Zap, AlertCircle, Sparkles, ChevronRight, Loader2, X } from 'lucide-react';
 import { UserProfile } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { GoogleGenAI } from "@google/genai";
+import Markdown from 'react-markdown';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,9 +15,33 @@ export default function PerformancePredictor({ user }: { user: UserProfile }) {
   const [mockScore, setMockScore] = useState(240);
   const [completion, setCompletion] = useState(85);
   const [studyHours, setStudyHours] = useState(10);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [report, setReport] = useState<string | null>(null);
 
   // Simple prediction formula for demo
   const predictedPercentile = Math.min(99.99, (mockScore / 300 * 50) + (completion / 100 * 30) + (studyHours / 14 * 20)).toFixed(2);
+
+  const generateAIReport = async () => {
+    setIsGenerating(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `As a JEE expert, analyze these stats for a student:
+        - Mock Score: ${mockScore}/300
+        - Syllabus Completion: ${completion}%
+        - Study Hours: ${studyHours}h/day
+        
+        Provide a concise, high-impact study strategy to reach 99.9+ percentile. Include specific topics to focus on in Physics, Chemistry, and Maths. Use a professional, motivating tone.`,
+      });
+      setReport(response.text || "Failed to generate report.");
+    } catch (error) {
+      console.error(error);
+      setReport("Error generating report. Please check your API key.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   return (
     <div className="h-full flex flex-col gap-6">
@@ -48,6 +74,14 @@ export default function PerformancePredictor({ user }: { user: UserProfile }) {
                   <Target size={14} className="text-neon-blue" />
                   <span className="text-xs font-bold">Target: 99.95+</span>
                 </div>
+                <button 
+                  onClick={generateAIReport}
+                  disabled={isGenerating}
+                  className="px-4 py-2 bg-neon-purple text-black font-bold rounded-xl hover:bg-white transition-all text-xs flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                  <span>Generate AI Strategy</span>
+                </button>
               </div>
             </div>
           </div>
@@ -121,10 +155,6 @@ export default function PerformancePredictor({ user }: { user: UserProfile }) {
                 </div>
               ))}
             </div>
-            <button className="w-full mt-6 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2">
-              <span>View Full Weakness Map</span>
-              <ChevronRight size={14} />
-            </button>
           </div>
 
           <div className="glass-card p-6 border-neon-blue/20">
@@ -138,6 +168,39 @@ export default function PerformancePredictor({ user }: { user: UserProfile }) {
           </div>
         </div>
       </div>
+
+      {/* AI Report Modal */}
+      <AnimatePresence>
+        {report && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="w-full max-w-2xl glass-card p-8 border-neon-purple/30 max-h-[80vh] overflow-y-auto custom-scrollbar"
+            >
+              <div className="flex justify-between items-center mb-6 sticky top-0 bg-black/40 backdrop-blur-md p-2 -m-2 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Sparkles size={24} className="text-neon-purple" />
+                  <h4 className="text-xl font-display font-bold">AI Strategy Report</h4>
+                </div>
+                <button onClick={() => setReport(null)} className="text-white/40 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="prose prose-invert max-w-none">
+                <Markdown>{report}</Markdown>
+              </div>
+              <button 
+                onClick={() => setReport(null)}
+                className="w-full mt-8 py-4 bg-neon-purple text-black font-bold rounded-xl hover:bg-white transition-all uppercase tracking-widest text-sm"
+              >
+                Understood, Let's Grind
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

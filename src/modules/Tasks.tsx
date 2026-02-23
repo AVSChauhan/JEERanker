@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { Plus, Search, Filter, MoreVertical, CheckCircle2, Circle, Clock, Tag, Share2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Plus, Search, Filter, MoreVertical, CheckCircle2, Circle, Clock, Tag, Share2, Trash2, X } from 'lucide-react';
 import { Task, UserProfile } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -11,13 +11,51 @@ function cn(...inputs: ClassValue[]) {
 
 export default function Tasks({ user }: { user: UserProfile }) {
   const [view, setView] = useState<'list' | 'kanban'>('list');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([
+    { id: '1', title: 'Solve Irodov - Mechanics', subject: 'Physics', priority: 'high', status: 'todo', estimatedMinutes: 120, isShared: true },
+    { id: '2', title: 'Revise Complex Numbers', subject: 'Maths', priority: 'medium', status: 'in-progress', estimatedMinutes: 90, isShared: false },
+    { id: '3', title: 'Organic Chemistry Notes', subject: 'Chemistry', priority: 'low', status: 'done', estimatedMinutes: 60, isShared: true },
+  ]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddingTask, setIsAddingTask] = useState(false);
+  const [newTask, setNewTask] = useState({ title: '', subject: 'Physics', priority: 'medium' as const });
 
   const filteredTasks = tasks.filter(t => 
     t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     t.subject.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const toggleTaskStatus = (id: string) => {
+    setTasks(tasks.map(t => {
+      if (t.id === id) {
+        return { ...t, status: t.status === 'done' ? 'todo' : 'done' };
+      }
+      return t;
+    }));
+  };
+
+  const deleteTask = (id: string) => {
+    setTasks(tasks.filter(t => t.id !== id));
+  };
+
+  const addTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTask.title.trim()) return;
+
+    const task: Task = {
+      id: Date.now().toString(),
+      title: newTask.title,
+      subject: newTask.subject,
+      priority: newTask.priority,
+      status: 'todo',
+      estimatedMinutes: 60,
+      isShared: false,
+    };
+
+    setTasks([task, ...tasks]);
+    setNewTask({ title: '', subject: 'Physics', priority: 'medium' });
+    setIsAddingTask(false);
+  };
 
   const columns = [
     { id: 'todo', label: 'To Do', color: 'bg-white/10' },
@@ -64,15 +102,78 @@ export default function Tasks({ user }: { user: UserProfile }) {
               className="bg-white/5 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-neon-blue transition-colors w-64"
             />
           </div>
-          <button className="p-2 bg-white/5 border border-white/10 rounded-xl text-white/40 hover:text-white">
-            <Filter size={20} />
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all text-sm">
+          <button 
+            onClick={() => setIsAddingTask(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all text-sm"
+          >
             <Plus size={18} />
             <span>New Task</span>
           </button>
         </div>
       </div>
+
+      {/* Add Task Modal */}
+      <AnimatePresence>
+        {isAddingTask && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-md glass-card p-8 border-neon-blue/30"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-xl font-display font-bold">Create New Task</h4>
+                <button onClick={() => setIsAddingTask(false)} className="text-white/40 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={addTask} className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Task Title</label>
+                  <input 
+                    autoFocus
+                    type="text"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                    placeholder="What needs to be done?"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Subject</label>
+                    <select 
+                      value={newTask.subject}
+                      onChange={(e) => setNewTask({ ...newTask, subject: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors appearance-none"
+                    >
+                      <option value="Physics">Physics</option>
+                      <option value="Maths">Maths</option>
+                      <option value="Chemistry">Chemistry</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Priority</label>
+                    <select 
+                      value={newTask.priority}
+                      onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as any })}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors appearance-none"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                    </select>
+                  </div>
+                </div>
+                <button className="w-full py-4 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all uppercase tracking-widest text-sm">
+                  Add Task
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Content Area */}
       {view === 'list' ? (
@@ -91,7 +192,10 @@ export default function Tasks({ user }: { user: UserProfile }) {
                 layout
                 className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-white/20 transition-all group"
               >
-                <button className="text-white/20 hover:text-neon-blue transition-colors">
+                <button 
+                  onClick={() => toggleTaskStatus(task.id)}
+                  className="text-white/20 hover:text-neon-blue transition-colors"
+                >
                   {task.status === 'done' ? <CheckCircle2 size={22} className="text-green-500" /> : <Circle size={22} />}
                 </button>
                 
@@ -118,8 +222,11 @@ export default function Tasks({ user }: { user: UserProfile }) {
                     <Clock size={12} />
                     <span>{task.estimatedMinutes}m</span>
                   </div>
-                  <button className="p-2 text-white/20 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical size={18} />
+                  <button 
+                    onClick={() => deleteTask(task.id)}
+                    className="p-2 text-white/20 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 size={18} />
                   </button>
                 </div>
               </motion.div>
@@ -162,13 +269,12 @@ export default function Tasks({ user }: { user: UserProfile }) {
                         <Clock size={12} />
                         <span>{task.estimatedMinutes}m</span>
                       </div>
-                      {task.isShared && <Share2 size={12} className="text-neon-blue/50" />}
+                      <button onClick={() => deleteTask(task.id)} className="text-white/20 hover:text-red-400">
+                        <Trash2 size={12} />
+                      </button>
                     </div>
                   </motion.div>
                 ))}
-                <button className="w-full py-3 border border-dashed border-white/10 rounded-xl text-[10px] uppercase tracking-widest text-white/20 hover:border-white/30 hover:text-white/40 transition-all">
-                  + Drop Task Here
-                </button>
               </div>
             </div>
           ))}

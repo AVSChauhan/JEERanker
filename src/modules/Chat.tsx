@@ -12,13 +12,141 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-import { useSync } from '../lib/sync';
-
 import { GoogleGenAI } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
+import { StreamChat, Channel as StreamChannel, MessageResponse } from 'stream-chat';
+import {
+  Chat as StreamChatUI,
+  Channel as StreamChannelUI,
+  Window,
+  MessageList,
+  MessageInput,
+  Thread,
+  ChannelHeader,
+  useChatContext,
+  MessageSimple,
+  MessageText,
+} from 'stream-chat-react';
+import 'stream-chat-react/dist/css/v2/index.css';
+
+const STREAM_API_KEY = (import.meta as any).env.VITE_STREAM_API_KEY;
+
+const CustomMessage = (props: any) => {
+  const { message } = props;
+  const isAI = message.user?.id === 'AI_ORACLE' || (message as any).isAI;
+  
+  // Decrypt the message text
+  const getDecryptedText = (text: string, msgCustom?: any) => {
+    try {
+      const shouldDecrypt = msgCustom?.isEncrypted ?? true;
+      return shouldDecrypt ? decrypt(text, APP_PASSWORD) : text;
+    } catch (e) {
+      return "[[ Encrypted Message ]]";
+    }
+  };
+
+  const decryptedText = getDecryptedText(message.text || '', message);
+
+  if (isAI) {
+    return (
+      <div className="flex flex-col mb-4 px-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Brain size={12} className="text-neon-purple" />
+          <span className="text-[10px] font-bold text-neon-purple uppercase tracking-widest">Oracle Research</span>
+        </div>
+        <div className="bg-neon-purple/10 border border-neon-purple/30 p-4 rounded-2xl text-sm leading-relaxed text-white markdown-body">
+          <ReactMarkdown>{decryptedText}</ReactMarkdown>
+        </div>
+      </div>
+    );
+  }
+
+  return <MessageSimple {...props} message={{ ...message, text: decryptedText }} />;
+};
+
+const CustomMessageInput = ({ isEncrypted, isResearchMode, setIsGenerating, setError, user }: any) => {
+  const { channel } = useChatContext();
+  const [text, setText] = useState('');
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim() || !channel) return;
+
+    const originalText = text;
+    setText('');
+
+    try {
+      const encryptedText = isEncrypted ? encrypt(originalText, APP_PASSWORD) : originalText;
+      await channel.sendMessage({
+        text: encryptedText,
+        isEncrypted,
+        senderName: user.displayName
+      } as any);
+
+      if (isResearchMode) {
+        setIsGenerating(true);
+        try {
+          const apiKey = process.env.GEMINI_API_KEY;
+          if (!apiKey) throw new Error("Gemini API Key is missing.");
+          
+          const ai = new GoogleGenAI({ apiKey });
+          const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: originalText,
+            config: {
+              tools: [{ googleSearch: {} }],
+              systemInstruction: "You are a JEE Research Assistant. Provide accurate information using Google Search grounding. Format your response in Markdown."
+            },
+          });
+
+          const aiText = response.text || "I couldn't find any information on that.";
+          const encryptedAiText = isEncrypted ? encrypt(aiText, APP_PASSWORD) : aiText;
+          
+          await channel.sendMessage({
+            text: encryptedAiText,
+            user_id: 'AI_ORACLE',
+            isAI: true,
+            isEncrypted
+          } as any);
+        } catch (err: any) {
+          console.error("AI Error:", err);
+          setError(err.message || "Failed to generate AI response.");
+        } finally {
+          setIsGenerating(false);
+        }
+      }
+    } catch (err) {
+      console.error("Send Error:", err);
+      setError("Failed to send message.");
+    }
+  };
+
+  return (
+    <div className="p-4 border-t border-white/10 bg-white/5">
+      <form onSubmit={handleSend} className="relative flex items-center gap-3">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={isEncrypted ? "Type an encrypted message..." : "Type a message..."}
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors text-white"
+        />
+        <button
+          type="submit"
+          className="p-3 bg-neon-blue text-black rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(0,242,255,0.3)]"
+        >
+          <Send size={20} />
+        </button>
+      </form>
+    </div>
+  );
+};
 
 export default function Chat({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
-  const [messages, syncMessages] = useSync<ChatMessage>('chat');
+  const [client, setClient] = useState<StreamChat | null>(null);
+  const [channel, setChannel] = useState<StreamChannel | null>(null);
+  const [streamMessages, setStreamMessages] = useState<MessageResponse[]>([]);
+  
   const [inputText, setInputText] = useState('');
   const [isEncrypted, setIsEncrypted] = useState(true);
   const [isResearchMode, setIsResearchMode] = useState(false);
@@ -26,83 +154,167 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Initialize Stream Chat
+  useEffect(() => {
+    const initChat = async () => {
+      if (!STREAM_API_KEY) {
+        setError("Stream API Key is missing. Please check environment variables.");
+        return;
+      }
+
+      const chatClient = StreamChat.getInstance(STREAM_API_KEY);
+      
+      try {
+        // Get token from our backend
+        const response = await fetch('/api/chat/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user.id }),
+        });
+        
+        const { token } = await response.json();
+        
+        await chatClient.connectUser(
+          {
+            id: user.id,
+            name: user.displayName,
+            image: `https://getstream.io/random_png/?name=${user.displayName}`,
+          },
+          token
+        );
+
+        const newChannel = chatClient.channel('messaging', 'warroom-main', {
+          name: 'Warroom Strategic Channel',
+          members: [user.id], // In a real app, you'd add the partner's ID too
+        } as any);
+
+        await newChannel.watch();
+        
+        setClient(chatClient);
+        setChannel(newChannel);
+
+        // For Stealth Mode: listen for new messages
+        newChannel.on('message.new', (event) => {
+          if (event.message) {
+            setStreamMessages(prev => [...prev, event.message as MessageResponse]);
+          }
+        });
+
+        // Initial messages for Stealth Mode
+        const state = newChannel.state;
+        setStreamMessages(state.messages as any as MessageResponse[]);
+
+      } catch (err: any) {
+        console.error("Stream Init Error:", err);
+        setError("Failed to connect to chat service.");
+      }
+    };
+
+    initChat();
+
+    return () => {
+      if (client) client.disconnectUser();
+    };
+  }, [user.id]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isGenerating]);
+  }, [streamMessages, isGenerating]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || !channel) return;
 
     setError(null);
     const textToSend = inputText;
     setInputText('');
 
-    // 1. Send user message
+    // 1. Send user message via Stream
     const encryptedText = isEncrypted ? encrypt(textToSend, APP_PASSWORD) : textToSend;
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      senderId: user.id,
-      text: encryptedText,
-      timestamp: Date.now(),
-    };
-    const updatedMessages = [...messages, userMsg];
-    syncMessages(updatedMessages);
+    
+    try {
+      await channel.sendMessage({
+        text: encryptedText,
+        isEncrypted,
+        senderName: user.displayName
+      } as any);
 
-    // 2. If research mode, trigger AI with grounding
-    if (isResearchMode) {
-      setIsGenerating(true);
-      try {
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-          throw new Error("Gemini API Key is missing. Please check environment variables.");
+      // 2. If research mode, trigger AI
+      if (isResearchMode) {
+        setIsGenerating(true);
+        try {
+          const apiKey = process.env.GEMINI_API_KEY;
+          if (!apiKey) throw new Error("Gemini API Key is missing.");
+          
+          const ai = new GoogleGenAI({ apiKey });
+          const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: textToSend,
+            config: {
+              tools: [{ googleSearch: {} }],
+              systemInstruction: "You are a JEE Research Assistant. Provide accurate information using Google Search grounding. Format your response in Markdown."
+            },
+          });
+
+          const aiText = response.text || "I couldn't find any information on that.";
+          const encryptedAiText = isEncrypted ? encrypt(aiText, APP_PASSWORD) : aiText;
+          
+          await channel.sendMessage({
+            text: encryptedAiText,
+            user_id: 'AI_ORACLE',
+            isAI: true,
+            isEncrypted
+          } as any);
+        } catch (err: any) {
+          console.error("AI Error:", err);
+          setError(err.message || "Failed to generate AI response.");
+        } finally {
+          setIsGenerating(false);
         }
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: textToSend,
-          config: {
-            tools: [{ googleSearch: {} }],
-            systemInstruction: "You are a JEE Research Assistant. Provide accurate information using Google Search grounding. Format your response in Markdown."
-          },
-        });
+      }
+    } catch (err) {
+      console.error("Send Error:", err);
+      setError("Failed to send message.");
+    }
+  };
 
-        const aiText = response.text || "I couldn't find any information on that.";
-        const encryptedAiText = isEncrypted ? encrypt(aiText, APP_PASSWORD) : aiText;
-        
-        const aiMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          senderId: 'AI_ORACLE' as any,
-          text: encryptedAiText,
-          timestamp: Date.now(),
-        };
-        syncMessages([...updatedMessages, aiMsg]);
-      } catch (err: any) {
-        console.error("AI Error:", err);
-        setError(err.message || "Failed to generate AI response.");
-      } finally {
-        setIsGenerating(false);
+  const clearChat = async () => {
+    if (confirm('Are you sure you want to clear all messages? This will truncate the channel for everyone.')) {
+      try {
+        if (channel) await channel.truncate();
+        setStreamMessages([]);
+      } catch (err) {
+        setError("Failed to clear chat.");
       }
     }
   };
 
-  const clearChat = () => {
-    if (confirm('Are you sure you want to clear all messages?')) {
-      syncMessages([]);
-    }
-  };
-
-  const getDecryptedText = (text: string) => {
+  const getDecryptedText = (text: string, msgCustom?: any) => {
     try {
-      return isEncrypted ? decrypt(text, APP_PASSWORD) : text;
+      // Use the encryption flag from the message itself if available, otherwise fallback to global state
+      const shouldDecrypt = msgCustom?.isEncrypted ?? isEncrypted;
+      return shouldDecrypt ? decrypt(text, APP_PASSWORD) : text;
     } catch (e) {
       return "[[ Encrypted Message ]]";
     }
   };
 
+  if (!client || !channel) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-neon-blue border-t-transparent rounded-full animate-spin" />
+          <p className="text-white/40 font-bold uppercase tracking-widest text-xs">Initializing Secure Channel...</p>
+          {error && <p className="text-red-400 text-[10px] mt-2">{error}</p>}
+        </div>
+      </div>
+    );
+  }
+
   if (isStealthMode) {
+    // ... (rest of stealth mode UI remains same but uses streamMessages)
     return (
       <div className="h-full flex flex-col bg-[#f8f9fa] text-[#202124] rounded-2xl overflow-hidden border border-gray-200 shadow-xl relative">
         {/* Fake Browser Header */}
@@ -141,9 +353,9 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
               <h1 className="text-3xl font-serif mb-8 text-gray-800 border-b pb-4">Strategic Research Analysis</h1>
               
               <div className="space-y-8">
-                {messages.map((msg) => {
-                  const isMe = msg.senderId === user.id;
-                  const isAI = msg.senderId === 'AI_ORACLE';
+                {streamMessages.map((msg) => {
+                  const isMe = msg.user?.id === user.id;
+                  const isAI = msg.user?.id === 'AI_ORACLE' || (msg as any).isAI;
                   return (
                     <div key={msg.id} className={cn(
                       "flex flex-col",
@@ -161,9 +373,9 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
                         "bg-white border-gray-200 text-gray-800"
                       )}>
                         {isAI ? (
-                          <ReactMarkdown>{getDecryptedText(msg.text)}</ReactMarkdown>
+                          <ReactMarkdown>{getDecryptedText(msg.text || '', msg)}</ReactMarkdown>
                         ) : (
-                          getDecryptedText(msg.text)
+                          getDecryptedText(msg.text || '', msg)
                         )}
                       </div>
                     </div>
@@ -211,7 +423,35 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
   }
 
   return (
-    <div className="h-full flex flex-col gap-6">
+    <div className="h-full flex flex-col gap-6 stream-chat-container">
+      <style>{`
+        .stream-chat-container .str-chat {
+          --str-chat__primary-color: #00f2ff;
+          --str-chat__active-primary-color: #ffffff;
+          --str-chat__surface-color: rgba(255, 255, 255, 0.05);
+          --str-chat__secondary-surface-color: rgba(255, 255, 255, 0.1);
+          --str-chat__own-message-background-color: #00f2ff;
+          --str-chat__other-message-background-color: rgba(255, 255, 255, 0.1);
+          --str-chat__message-text-color: #ffffff;
+          --str-chat__own-message-text-color: #000000;
+          --str-chat__border-radius-circle: 12px;
+          --str-chat__font-family: 'Inter', sans-serif;
+        }
+        .str-chat__container {
+          background: transparent;
+        }
+        .str-chat__main-panel {
+          padding: 0;
+        }
+        .str-chat__list {
+          background: transparent;
+        }
+        .str-chat__message-input {
+          background: rgba(255, 255, 255, 0.05);
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+      `}</style>
+
       {/* Chat Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -222,7 +462,7 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
             <h3 className="font-display font-bold text-lg">Secure Channel</h3>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">End-to-End Encrypted</span>
+              <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">Powered by Stream SDK</span>
             </div>
           </div>
         </div>
@@ -240,7 +480,7 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
             <Brain size={14} />
             <span>Research Mode</span>
           </button>
-          
+
           <div className="flex items-center gap-2 p-1 bg-white/5 rounded-xl border border-white/10">
             <button 
               onClick={() => setIsEncrypted(true)}
@@ -261,7 +501,7 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
               <Eye size={16} />
             </button>
           </div>
-
+          
           <button 
             onClick={clearChat}
             className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-400 transition-all border border-white/10"
@@ -271,86 +511,24 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 glass-card overflow-hidden flex flex-col">
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          {messages.length === 0 && (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
-              <Lock size={48} className="mb-4" />
-              <p className="text-sm uppercase tracking-widest font-bold">No messages in this session</p>
-              <p className="text-xs">All messages are AES-256 encrypted</p>
-            </div>
-          )}
-          
-          {messages.map((msg) => {
-            const isMe = msg.senderId === user.id;
-            const isAI = msg.senderId === 'AI_ORACLE';
-            return (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, x: isMe ? 20 : -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className={cn(
-                  "flex flex-col max-w-[80%]",
-                  isMe ? "ml-auto items-end" : "items-start"
-                )}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
-                    {isAI ? 'ORACLE' : isMe ? 'You' : 'Partner'}
-                  </span>
-                  <span className="text-[10px] text-white/20">
-                    {format(msg.timestamp, 'HH:mm')}
-                  </span>
-                </div>
-                <div className={cn(
-                  "px-4 py-2.5 rounded-2xl text-sm leading-relaxed",
-                  isAI ? "bg-neon-purple/10 border border-neon-purple/30 text-white markdown-body" :
-                  isMe 
-                    ? "bg-neon-blue text-black font-medium rounded-tr-none" 
-                    : "bg-white/10 text-white rounded-tl-none border border-white/5"
-                )}>
-                  {isAI ? (
-                    <ReactMarkdown>{getDecryptedText(msg.text)}</ReactMarkdown>
-                  ) : (
-                    getDecryptedText(msg.text)
-                  )}
-                </div>
-              </motion.div>
-            );
-          })}
-          {isGenerating && (
-            <div className="flex items-center gap-3 text-neon-purple animate-pulse p-4">
-              <Brain size={16} className="animate-bounce" />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Oracle is researching...</span>
-            </div>
-          )}
-        </div>
-
-        {/* Input Area */}
-        <form onSubmit={handleSendMessage} className="p-4 border-t border-white/10 bg-white/5">
-          <div className="relative flex items-center gap-3">
-            <button type="button" className="p-2 text-white/30 hover:text-white transition-colors">
-              <Paperclip size={20} />
-            </button>
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder={isEncrypted ? "Type an encrypted message..." : "Search messages..."}
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-neon-blue transition-colors"
-            />
-            <button type="button" className="p-2 text-white/30 hover:text-white transition-colors">
-              <Smile size={20} />
-            </button>
-            <button
-              type="submit"
-              className="p-3 bg-neon-blue text-black rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(0,242,255,0.3)]"
-            >
-              <Send size={20} />
-            </button>
-          </div>
-        </form>
+      {/* Stream Chat UI */}
+      <div className="flex-1 glass-card overflow-hidden flex flex-col relative">
+        <StreamChatUI client={client} theme="str-chat__theme-dark">
+          <StreamChannelUI channel={channel} Message={CustomMessage}>
+            <Window>
+              <ChannelHeader />
+              <MessageList />
+              <CustomMessageInput 
+                isEncrypted={isEncrypted} 
+                isResearchMode={isResearchMode} 
+                setIsGenerating={setIsGenerating}
+                setError={setError}
+                user={user}
+              />
+            </Window>
+            <Thread />
+          </StreamChannelUI>
+        </StreamChatUI>
       </div>
     </div>
   );

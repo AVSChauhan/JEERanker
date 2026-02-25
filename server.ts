@@ -3,13 +3,37 @@ import { createServer } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import { StreamChat } from 'stream-chat';
 
 async function startServer() {
   const app = express();
+  app.use(express.json());
+
   const server = createServer(app);
   const wss = new WebSocketServer({ server });
 
   const PORT = 3000;
+
+  const STREAM_API_KEY = process.env.VITE_STREAM_API_KEY;
+  const STREAM_API_SECRET = process.env.STREAM_API_SECRET;
+
+  // Stream Chat Token Endpoint
+  app.post('/api/chat/token', (req, res) => {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'User ID is required' });
+    if (!STREAM_API_KEY || !STREAM_API_SECRET) {
+      return res.status(500).json({ error: 'Stream Chat API keys not configured' });
+    }
+
+    try {
+      const serverClient = StreamChat.getInstance(STREAM_API_KEY, STREAM_API_SECRET);
+      const token = serverClient.createToken(userId);
+      res.json({ token, apiKey: STREAM_API_KEY });
+    } catch (error) {
+      console.error('Error generating Stream token:', error);
+      res.status(500).json({ error: 'Failed to generate token' });
+    }
+  });
   
   // In-memory store (for production, this would be a database)
   const store: Record<string, any[]> = {

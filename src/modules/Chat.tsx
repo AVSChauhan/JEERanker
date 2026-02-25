@@ -29,8 +29,6 @@ import {
 } from 'stream-chat-react';
 import 'stream-chat-react/dist/css/v2/index.css';
 
-const STREAM_API_KEY = (import.meta as any).env.VITE_STREAM_API_KEY;
-
 const CustomMessage = (props: any) => {
   const { message } = props;
   const isAI = message.user?.id === 'AI_ORACLE' || (message as any).isAI;
@@ -143,6 +141,7 @@ const CustomMessageInput = ({ isEncrypted, isResearchMode, setIsGenerating, setE
 };
 
 export default function Chat({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
+  const STREAM_API_KEY = (import.meta as any).env.VITE_STREAM_API_KEY;
   const [client, setClient] = useState<StreamChat | null>(null);
   const [channel, setChannel] = useState<StreamChannel | null>(null);
   const [streamMessages, setStreamMessages] = useState<MessageResponse[]>([]);
@@ -158,7 +157,7 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
   useEffect(() => {
     const initChat = async () => {
       if (!STREAM_API_KEY) {
-        setError("Stream API Key is missing. Please check environment variables.");
+        setError("Stream API Key is missing. If you are on Vercel, please add VITE_STREAM_API_KEY to your Environment Variables in the project settings.");
         return;
       }
 

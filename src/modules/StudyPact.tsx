@@ -11,7 +11,7 @@ function cn(...inputs: ClassValue[]) {
 
 import { useSync } from '../lib/sync';
 
-export default function StudyPactModule({ user }: { user: UserProfile }) {
+export default function StudyPactModule({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [pacts, syncPacts] = useSync<StudyPact>('pact');
   
   const pact = pacts[0] || {
@@ -35,7 +35,9 @@ export default function StudyPactModule({ user }: { user: UserProfile }) {
   return (
     <div className="h-full flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h3 className="font-display font-bold text-2xl tracking-tight">The Blood Pact</h3>
+        <h3 className="font-display font-bold text-2xl tracking-tight">
+          {isStealthMode ? 'Study Commitment' : 'The Blood Pact'}
+        </h3>
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsEditing(true)}
@@ -43,10 +45,12 @@ export default function StudyPactModule({ user }: { user: UserProfile }) {
           >
             <Edit2 size={18} />
           </button>
-          <div className="px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-            <Shield size={12} />
-            Binding Agreement
-          </div>
+          {!isStealthMode && (
+            <div className="px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+              <Shield size={12} />
+              Binding Agreement
+            </div>
+          )}
         </div>
       </div>
 
@@ -168,11 +172,15 @@ export default function StudyPactModule({ user }: { user: UserProfile }) {
             </div>
 
             <div className="glass-card p-6">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-white/40 mb-6">Shared Review</h4>
+              <h4 className="text-xs font-bold uppercase tracking-widest text-white/40 mb-6">
+                {isStealthMode ? 'Review Schedule' : 'Shared Review'}
+              </h4>
               <div className="space-y-4">
                 <div className="p-4 bg-neon-blue/5 border border-neon-blue/20 rounded-xl">
                   <p className="text-xs text-neon-blue font-bold mb-2">Next Review: Sunday 21:00</p>
-                  <p className="text-[10px] text-white/50 leading-relaxed">Both users must confirm hours to finalize the weekly pact status.</p>
+                  <p className="text-[10px] text-white/50 leading-relaxed">
+                    {isStealthMode ? 'Finalize your hours for the weekly summary.' : 'Both users must confirm hours to finalize the weekly pact status.'}
+                  </p>
                 </div>
                 <button className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold transition-all">
                   Initiate Review
@@ -202,22 +210,24 @@ export default function StudyPactModule({ user }: { user: UserProfile }) {
             </div>
             <div className="space-y-2 mt-4">
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                <span className="text-white/40">AV Progress</span>
+                <span className="text-white/40">{isStealthMode ? 'Your Progress' : 'AV Progress'}</span>
                 <span className="text-neon-blue">52.5 / 70h</span>
               </div>
               <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <div className="h-full bg-neon-blue w-[75%]" />
               </div>
             </div>
-            <div className="space-y-2 mt-4">
-              <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
-                <span className="text-white/40">GN Progress</span>
-                <span className="text-neon-purple">58 / 70h</span>
+            {!isStealthMode && (
+              <div className="space-y-2 mt-4">
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest">
+                  <span className="text-white/40">GN Progress</span>
+                  <span className="text-neon-purple">58 / 70h</span>
+                </div>
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-neon-purple w-[82%]" />
+                </div>
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-neon-purple w-[82%]" />
-              </div>
-            </div>
+            )}
           </div>
 
           <div className="glass-card p-6">
@@ -228,7 +238,7 @@ export default function StudyPactModule({ user }: { user: UserProfile }) {
             <ul className="space-y-3 text-[10px] text-white/50 list-disc pl-4 leading-relaxed">
               <li>Minimum 10 hours must be logged daily.</li>
               <li>Idle time &gt; 15 mins is auto-deducted.</li>
-              <li>Weekly review is mandatory for both.</li>
+              <li>Weekly review is mandatory.</li>
               <li>Breach results in immediate penalty activation.</li>
             </ul>
           </div>

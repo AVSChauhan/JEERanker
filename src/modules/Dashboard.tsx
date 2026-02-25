@@ -24,7 +24,7 @@ function cn(...inputs: ClassValue[]) {
 
 import { useSync } from '../lib/sync';
 
-export default function Dashboard({ user }: { user: UserProfile }) {
+export default function Dashboard({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [tasks] = useSync<any>('tasks');
   const [habits] = useSync<any>('habits');
   const [blocks] = useSync<any>('blocks');
@@ -169,16 +169,18 @@ export default function Dashboard({ user }: { user: UserProfile }) {
         <div className="glass-card p-6 h-64 flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-display font-bold text-lg">Productivity Index</h3>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-[10px] text-white/40">
-                <div className="w-2 h-2 rounded-full bg-neon-blue" />
-                <span>AV</span>
+            {!isStealthMode && (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-[10px] text-white/40">
+                  <div className="w-2 h-2 rounded-full bg-neon-blue" />
+                  <span>AV</span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px] text-white/40">
+                  <div className="w-2 h-2 rounded-full bg-neon-purple" />
+                  <span>GN</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-[10px] text-white/40">
-                <div className="w-2 h-2 rounded-full bg-neon-purple" />
-                <span>GN</span>
-              </div>
-            </div>
+            )}
           </div>
           <div className="flex-1 flex items-end gap-2 px-2">
             {[40, 70, 45, 90, 65, 80, 55, 85, 40, 60, 75, 95].map((h, i) => (
@@ -201,42 +203,44 @@ export default function Dashboard({ user }: { user: UserProfile }) {
       {/* Sidebar Widgets */}
       <div className="space-y-6">
         {/* Partner Status */}
-        <div className="glass-card p-6 border-neon-purple/20">
-          <h3 className="font-display font-bold text-lg mb-6 flex items-center gap-2">
-            <Target size={20} className="text-neon-purple" />
-            Partner Sync
-          </h3>
-          <div className="flex items-center gap-4 mb-8">
-            <div className="relative">
-              <div className="w-14 h-14 rounded-full bg-neon-purple/20 flex items-center justify-center font-bold text-xl text-neon-purple border border-neon-purple/30">
-                {user.id === 'AV' ? 'G' : 'A'}
+        {!isStealthMode && (
+          <div className="glass-card p-6 border-neon-purple/20">
+            <h3 className="font-display font-bold text-lg mb-6 flex items-center gap-2">
+              <Target size={20} className="text-neon-purple" />
+              Partner Sync
+            </h3>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-full bg-neon-purple/20 flex items-center justify-center font-bold text-xl text-neon-purple border border-neon-purple/30">
+                  {user.id === 'AV' ? 'G' : 'A'}
+                </div>
+                <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-4 border-dark-bg" />
               </div>
-              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-4 border-dark-bg" />
+              <div>
+                <p className="font-bold text-lg">{user.id === 'AV' ? 'GN' : 'AV'}</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-xs text-green-400 font-medium tracking-wide">Connected</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-lg">{user.id === 'AV' ? 'GN' : 'AV'}</p>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-xs text-green-400 font-medium tracking-wide">Connected</p>
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold">
+                  <span className="text-white/40">Goal Progress</span>
+                  <span className="text-neon-purple">{totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
+                    className="h-full bg-neon-purple shadow-[0_0_10px_rgba(188,19,254,0.5)]" 
+                  />
+                </div>
               </div>
             </div>
           </div>
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold">
-                <span className="text-white/40">Goal Progress</span>
-                <span className="text-neon-purple">{totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%</span>
-              </div>
-              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
-                  className="h-full bg-neon-purple shadow-[0_0_10px_rgba(188,19,254,0.5)]" 
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Motivation Quote */}
         <div className="glass-card p-6 bg-gradient-to-br from-neon-blue/5 to-transparent">

@@ -11,7 +11,7 @@ function cn(...inputs: ClassValue[]) {
 
 import { useSync } from '../lib/sync';
 
-export default function HabitTracker({ user }: { user: UserProfile }) {
+export default function HabitTracker({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [habits, syncHabits] = useSync<Habit>('habits');
   const [isAddingHabit, setIsAddingHabit] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');

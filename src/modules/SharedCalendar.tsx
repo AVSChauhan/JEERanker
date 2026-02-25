@@ -20,7 +20,7 @@ interface CalendarEvent {
   description?: string;
 }
 
-export default function SharedCalendar({ user }: { user: UserProfile }) {
+export default function SharedCalendar({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, syncEvents] = useSync<CalendarEvent>('calendar');
   const [isAdding, setIsAdding] = useState(false);
@@ -66,7 +66,9 @@ export default function SharedCalendar({ user }: { user: UserProfile }) {
     <div className="h-full flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <h3 className="font-display font-bold text-2xl tracking-tight">War Calendar</h3>
+          <h3 className="font-display font-bold text-2xl tracking-tight">
+            {isStealthMode ? 'Study Calendar' : 'War Calendar'}
+          </h3>
           <div className="flex items-center gap-2 bg-white/5 rounded-xl p-1 border border-white/10">
             <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
               <ChevronLeft size={16} />
@@ -210,7 +212,9 @@ export default function SharedCalendar({ user }: { user: UserProfile }) {
               className="w-full max-w-md glass-card p-8 border-neon-blue/30"
             >
               <div className="flex justify-between items-center mb-6">
-                <h4 className="text-xl font-display font-bold">New Strategic Event</h4>
+                <h4 className="text-xl font-display font-bold">
+                  {isStealthMode ? 'New Event' : 'New Strategic Event'}
+                </h4>
                 <button onClick={() => setIsAdding(false)} className="text-white/40 hover:text-white">
                   <X size={20} />
                 </button>

@@ -11,7 +11,7 @@ function cn(...inputs: ClassValue[]) {
 
 import { useSync } from '../lib/sync';
 
-export default function Analytics({ user }: { user: UserProfile }) {
+export default function Analytics({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [tasks] = useSync<any>('tasks');
   const [habits] = useSync<any>('habits');
   const [blocks] = useSync<any>('blocks');

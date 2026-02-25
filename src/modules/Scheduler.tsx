@@ -17,7 +17,7 @@ const HOURS = eachHourOfInterval({
 
 import { useSync } from '../lib/sync';
 
-export default function Scheduler({ user }: { user: UserProfile }) {
+export default function Scheduler({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [blocks, syncBlocks] = useSync<ScheduleBlock>('blocks');
   const [isAdding, setIsAdding] = useState(false);
@@ -74,7 +74,9 @@ export default function Scheduler({ user }: { user: UserProfile }) {
           </button>
           <div className="text-center">
             <h3 className="font-display font-bold text-xl">{format(currentDate, 'EEEE, MMM do')}</h3>
-            <p className="text-[10px] uppercase tracking-widest text-white/40">Daily War Plan</p>
+            <p className="text-[10px] uppercase tracking-widest text-white/40">
+              {isStealthMode ? 'Daily Schedule' : 'Daily War Plan'}
+            </p>
           </div>
           <button onClick={() => setCurrentDate(addDays(currentDate, 1))} className="p-2 hover:bg-white/5 rounded-lg">
             <ChevronRight size={20} />

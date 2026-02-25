@@ -17,18 +17,26 @@ import { useSync } from '../lib/sync';
 import { GoogleGenAI } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
 
-export default function Chat({ user }: { user: UserProfile }) {
+export default function Chat({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [messages, syncMessages] = useSync<ChatMessage>('chat');
   const [inputText, setInputText] = useState('');
   const [isEncrypted, setIsEncrypted] = useState(true);
   const [isResearchMode, setIsResearchMode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isGenerating]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputText.trim()) return;
 
+    setError(null);
     const textToSend = inputText;
     setInputText('');
 
@@ -47,7 +55,11 @@ export default function Chat({ user }: { user: UserProfile }) {
     if (isResearchMode) {
       setIsGenerating(true);
       try {
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+          throw new Error("Gemini API Key is missing. Please check environment variables.");
+        }
+        const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.generateContent({
           model: "gemini-3-flash-preview",
           contents: textToSend,
@@ -67,8 +79,9 @@ export default function Chat({ user }: { user: UserProfile }) {
           timestamp: Date.now(),
         };
         syncMessages([...updatedMessages, aiMsg]);
-      } catch (error) {
-        console.error("AI Error:", error);
+      } catch (err: any) {
+        console.error("AI Error:", err);
+        setError(err.message || "Failed to generate AI response.");
       } finally {
         setIsGenerating(false);
       }
@@ -88,6 +101,114 @@ export default function Chat({ user }: { user: UserProfile }) {
       return "[[ Encrypted Message ]]";
     }
   };
+
+  if (isStealthMode) {
+    return (
+      <div className="h-full flex flex-col bg-[#f8f9fa] text-[#202124] rounded-2xl overflow-hidden border border-gray-200 shadow-xl relative">
+        {/* Fake Browser Header */}
+        <div className="bg-[#dee1e6] p-2 flex items-center gap-2 border-b border-gray-300">
+          <div className="flex gap-1.5 px-2">
+            <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+            <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+            <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
+          </div>
+          <div className="flex-1 bg-white rounded-full px-4 py-1 text-[10px] text-gray-500 flex items-center gap-2 border border-gray-300">
+            <Lock size={10} className="text-green-600" />
+            <span>https://docs.google.com/document/d/1xJ...</span>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Fake Documentation Sidebar */}
+          <div className="w-48 bg-[#f1f3f4] border-r border-gray-200 p-4 space-y-4 hidden md:block">
+            <div className="h-4 bg-gray-300 rounded w-3/4" />
+            <div className="space-y-2">
+              <div className="h-2 bg-gray-200 rounded w-full" />
+              <div className="h-2 bg-gray-200 rounded w-5/6" />
+              <div className="h-2 bg-gray-200 rounded w-4/6" />
+            </div>
+            <div className="h-4 bg-gray-300 rounded w-1/2" />
+            <div className="space-y-2">
+              <div className="h-2 bg-gray-200 rounded w-full" />
+              <div className="h-2 bg-gray-200 rounded w-full" />
+            </div>
+          </div>
+
+          {/* Chat Embedded in "Document" */}
+          <div className="flex-1 flex flex-col bg-white relative">
+            <div className="p-8 max-w-2xl mx-auto w-full flex-1 overflow-y-auto custom-scrollbar" ref={scrollRef}>
+              <h1 className="text-3xl font-serif mb-8 text-gray-800 border-b pb-4">Strategic Research Analysis</h1>
+              
+              <div className="space-y-8">
+                {messages.map((msg) => {
+                  const isMe = msg.senderId === user.id;
+                  const isAI = msg.senderId === 'AI_ORACLE';
+                  return (
+                    <div key={msg.id} className={cn(
+                      "flex flex-col",
+                      isMe ? "items-end" : "items-start"
+                    )}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">
+                          {isAI ? 'SYSTEM_REF' : isMe ? 'AUTHOR' : 'CONTRIBUTOR'}
+                        </span>
+                      </div>
+                      <div className={cn(
+                        "max-w-[90%] p-4 rounded-lg text-sm leading-relaxed shadow-sm border",
+                        isAI ? "bg-blue-50 border-blue-100 text-blue-900" :
+                        isMe ? "bg-gray-50 border-gray-200 text-gray-800" :
+                        "bg-white border-gray-200 text-gray-800"
+                      )}>
+                        {isAI ? (
+                          <ReactMarkdown>{getDecryptedText(msg.text)}</ReactMarkdown>
+                        ) : (
+                          getDecryptedText(msg.text)
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {isGenerating && (
+                  <div className="flex items-center gap-2 text-blue-500 animate-pulse italic text-xs">
+                    <Search size={14} />
+                    <span>Indexing resources...</span>
+                  </div>
+                )}
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-100 text-red-600 text-[10px] rounded-lg">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Hidden Input Area (Looks like a comment box) */}
+            <div className="p-4 border-t border-gray-100 bg-gray-50">
+              <form onSubmit={handleSendMessage} className="max-w-2xl mx-auto flex gap-2">
+                <input 
+                  type="text"
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Add a comment or search documentation..."
+                  className="flex-1 bg-white border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                />
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition-colors">
+                  POST
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        {/* Fake Footer */}
+        <div className="bg-[#f1f3f4] p-1 px-4 text-[9px] text-gray-400 border-t border-gray-200 flex justify-between">
+          <span>Page 1 of 12 • 4,231 words</span>
+          <span>Last edit was 2 minutes ago</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col gap-6">

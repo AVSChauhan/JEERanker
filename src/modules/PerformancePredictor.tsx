@@ -11,7 +11,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function PerformancePredictor({ user }: { user: UserProfile }) {
+export default function PerformancePredictor({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [mockScore, setMockScore] = useState(240);
   const [completion, setCompletion] = useState(85);
   const [studyHours, setStudyHours] = useState(10);
@@ -46,11 +46,15 @@ export default function PerformancePredictor({ user }: { user: UserProfile }) {
   return (
     <div className="h-full flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h3 className="font-display font-bold text-2xl tracking-tight">Oracle Engine</h3>
-        <div className="px-3 py-1 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-          <Brain size={12} />
-          AI Prediction Active
-        </div>
+        <h3 className="font-display font-bold text-2xl tracking-tight">
+          {isStealthMode ? 'Performance Analysis' : 'Oracle Engine'}
+        </h3>
+        {!isStealthMode && (
+          <div className="px-3 py-1 bg-neon-purple/10 text-neon-purple border border-neon-purple/20 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+            <Brain size={12} />
+            AI Prediction Active
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -160,7 +164,9 @@ export default function PerformancePredictor({ user }: { user: UserProfile }) {
           <div className="glass-card p-6 border-neon-blue/20">
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle size={20} className="text-neon-blue" />
-              <h4 className="font-bold text-xs uppercase tracking-widest text-white/40">Oracle Insight</h4>
+              <h4 className="font-bold text-xs uppercase tracking-widest text-white/40">
+                {isStealthMode ? 'System Insight' : 'Oracle Insight'}
+              </h4>
             </div>
             <p className="text-xs text-white/60 leading-relaxed">
               Based on your current trajectory, increasing study hours to <span className="text-neon-blue font-bold">12h</span> and focusing on <span className="text-neon-blue font-bold">Inorganic Chemistry</span> could boost your percentile by <span className="text-green-400 font-bold">0.85%</span>.

@@ -205,16 +205,16 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'scheduler', label: 'Day Scheduler', icon: Clock },
+    { id: 'scheduler', label: isStealthMode ? 'Daily Schedule' : 'Day Scheduler', icon: Clock },
     { id: 'timer', label: 'Study Timer', icon: Zap },
-    { id: 'calendar', label: 'War Calendar', icon: CalendarIcon },
+    { id: 'calendar', label: isStealthMode ? 'Study Calendar' : 'War Calendar', icon: CalendarIcon },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'notes', label: 'Notes', icon: BookOpen },
-    { id: 'resources', label: 'Vault', icon: Database },
+    { id: 'resources', label: isStealthMode ? 'Resources' : 'Vault', icon: Database },
     { id: 'journal', label: 'Journal', icon: Lock },
-    { id: 'habits', label: 'Habit Forge', icon: Flame },
-    { id: 'pact', label: 'Study Pact', icon: Shield },
-    { id: 'predictor', label: 'Oracle Engine', icon: Brain },
+    { id: 'habits', label: isStealthMode ? 'Habit Tracker' : 'Habit Forge', icon: Flame },
+    { id: 'pact', label: isStealthMode ? 'Study Commitment' : 'Study Pact', icon: Shield },
+    { id: 'predictor', label: isStealthMode ? 'Performance' : 'Oracle Engine', icon: Brain },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
@@ -353,19 +353,19 @@ export default function App() {
               transition={{ duration: 0.2 }}
               className="h-full"
             >
-              {activeTab === 'dashboard' && <Dashboard user={user} />}
-              {activeTab === 'scheduler' && <Scheduler user={user} />}
+              {activeTab === 'dashboard' && <Dashboard user={user} isStealthMode={isStealthMode} />}
+              {activeTab === 'scheduler' && <Scheduler user={user} isStealthMode={isStealthMode} />}
               {activeTab === 'timer' && <Timer user={user} />}
-              {activeTab === 'calendar' && <SharedCalendar user={user} />}
-              {activeTab === 'tasks' && <Tasks user={user} />}
-              {activeTab === 'chat' && <Chat user={user} />}
+              {activeTab === 'calendar' && <SharedCalendar user={user} isStealthMode={isStealthMode} />}
+              {activeTab === 'tasks' && <Tasks user={user} isStealthMode={isStealthMode} />}
+              {activeTab === 'chat' && <Chat user={user} isStealthMode={isStealthMode} />}
               {activeTab === 'notes' && <Notes user={user} />}
               {activeTab === 'resources' && <Resources user={user} />}
               {activeTab === 'journal' && <Journal user={user} />}
-              {activeTab === 'habits' && <HabitTracker user={user} />}
-              {activeTab === 'pact' && <StudyPact user={user} />}
-              {activeTab === 'predictor' && <PerformancePredictor user={user} />}
-              {activeTab === 'analytics' && <Analytics user={user} />}
+              {activeTab === 'habits' && <HabitTracker user={user} isStealthMode={isStealthMode} />}
+              {activeTab === 'pact' && <StudyPact user={user} isStealthMode={isStealthMode} />}
+              {activeTab === 'predictor' && <PerformancePredictor user={user} isStealthMode={isStealthMode} />}
+              {activeTab === 'analytics' && <Analytics user={user} isStealthMode={isStealthMode} />}
               {activeTab === 'settings' && <SettingsModule user={user} isStealthMode={isStealthMode} setIsStealthMode={setIsStealthMode} />}
             </motion.div>
           </AnimatePresence>
@@ -396,7 +396,7 @@ export default function App() {
                   </button>
                 </div>
                 <div className="flex-1 overflow-hidden p-6">
-                  <Chat user={user} />
+                  <Chat user={user} isStealthMode={isStealthMode} />
                 </div>
               </motion.div>
             </div>

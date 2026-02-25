@@ -11,7 +11,7 @@ function cn(...inputs: ClassValue[]) {
 
 import { useSync } from '../lib/sync';
 
-export default function Tasks({ user }: { user: UserProfile }) {
+export default function Tasks({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
   const [view, setView] = useState<'list' | 'kanban'>('list');
   const [tasks, syncTasks] = useSync<Task>('tasks');
   const [searchQuery, setSearchQuery] = useState('');
@@ -216,7 +216,7 @@ export default function Tasks({ user }: { user: UserProfile }) {
                 </div>
 
                 <div className="flex items-center gap-6">
-                  {task.isShared && <Share2 size={14} className="text-neon-blue" />}
+                  {!isStealthMode && task.isShared && <Share2 size={14} className="text-neon-blue" />}
                   <div className="flex items-center gap-2 text-[10px] text-white/30">
                     <Clock size={12} />
                     <span>{task.estimatedMinutes}m</span>

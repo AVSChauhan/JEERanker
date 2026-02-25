@@ -9,7 +9,15 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function Settings({ user }: { user: UserProfile }) {
+export default function Settings({ 
+  user, 
+  isStealthMode, 
+  setIsStealthMode 
+}: { 
+  user: UserProfile; 
+  isStealthMode: boolean; 
+  setIsStealthMode: (val: boolean) => void;
+}) {
   const [notifications, setNotifications] = useState(true);
   const [focusMode, setFocusMode] = useState(false);
 
@@ -19,6 +27,7 @@ export default function Settings({ user }: { user: UserProfile }) {
       items: [
         { id: 'profile', label: 'Profile Settings', icon: User, value: user.displayName },
         { id: 'appearance', label: 'Appearance', icon: Moon, value: 'Dark Mode' },
+        { id: 'stealth', label: 'Stealth Mode', icon: Shield, type: 'toggle', value: isStealthMode, setter: setIsStealthMode },
       ]
     },
     {

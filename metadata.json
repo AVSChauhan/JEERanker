@@ -1,6 +1,6 @@
 {
-  "name": "JEERanker WARROOM",
-  "description": "Ultimate JEE Buddy – Dual Study Operating System for AV & GN",
+  "name": "JEE WARROOM",
+  "description": "Strategic Command Center for JEE Aspirants. Real-time collaboration, AI-powered research, and secure communication.",
   "requestFramePermissions": [
     "notifications"
   ]

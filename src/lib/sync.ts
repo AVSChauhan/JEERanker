@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-type SyncCollection = 'chat' | 'tasks' | 'notes' | 'habits' | 'blocks' | 'calendar' | 'journal';
+type SyncCollection = 'chat' | 'tasks' | 'notes' | 'habits' | 'blocks' | 'calendar' | 'journal' | 'pact' | 'resources';
 
 interface SyncPayload {
   type: 'sync';

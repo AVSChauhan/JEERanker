@@ -9,21 +9,11 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+import { useSync } from '../lib/sync';
+
 export default function Resources({ user }: { user: UserProfile }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [resources, setResources] = useState(() => {
-    const saved = localStorage.getItem('warroom_resources');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', title: 'Irodov Solutions - Mechanics', type: 'pdf', subject: 'Physics', size: '4.2 MB', starred: true },
-      { id: '2', title: 'Organic Chemistry Roadmap', type: 'image', subject: 'Chemistry', size: '1.8 MB', starred: false },
-      { id: '3', title: 'Calculus Cheat Sheet', type: 'pdf', subject: 'Maths', size: '0.5 MB', starred: true },
-      { id: '4', title: 'Mock Test - Jan 2024', type: 'link', subject: 'Mock Tests', size: '-', starred: false },
-    ];
-  });
-
-  React.useEffect(() => {
-    localStorage.setItem('warroom_resources', JSON.stringify(resources));
-  }, [resources]);
+  const [resources, syncResources] = useSync<any>('resources');
   const [isAdding, setIsAdding] = useState(false);
   const [newResource, setNewResource] = useState({ title: '', type: 'pdf', subject: 'Physics' });
 
@@ -33,7 +23,7 @@ export default function Resources({ user }: { user: UserProfile }) {
   );
 
   const toggleStar = (id: string) => {
-    setResources(resources.map(r => r.id === id ? { ...r, starred: !r.starred } : r));
+    syncResources(resources.map(r => r.id === id ? { ...r, starred: !r.starred } : r));
   };
 
   const addResource = (e: React.FormEvent) => {
@@ -47,7 +37,7 @@ export default function Resources({ user }: { user: UserProfile }) {
       starred: false
     };
 
-    setResources([res, ...resources]);
+    syncResources([res, ...resources]);
     setNewResource({ title: '', type: 'pdf', subject: 'Physics' });
     setIsAdding(false);
   };

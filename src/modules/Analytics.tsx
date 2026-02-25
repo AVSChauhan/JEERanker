@@ -9,17 +9,33 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+import { useSync } from '../lib/sync';
+
 export default function Analytics({ user }: { user: UserProfile }) {
+  const [tasks] = useSync<any>('tasks');
+  const [habits] = useSync<any>('habits');
+  const [blocks] = useSync<any>('blocks');
+  
   const barCanvasRef = useRef<HTMLCanvasElement>(null);
   const pieCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    // Draw Bar Chart
+    // Draw Bar Chart (Study Hours per Day)
     if (barCanvasRef.current) {
       const ctx = barCanvasRef.current.getContext('2d');
       if (ctx) {
-        const data = [65, 80, 45, 90, 70, 85, 60];
-        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        // Calculate hours from blocks
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const data = [0, 0, 0, 0, 0, 0, 0];
+        
+        blocks.forEach((b: any) => {
+          const dayIndex = new Date(b.date).getDay();
+          // Simple duration calculation
+          const start = parseInt(b.startTime.split(':')[0]);
+          const end = parseInt(b.endTime.split(':')[0]);
+          data[dayIndex] += (end - start);
+        });
+
         const width = barCanvasRef.current.width;
         const height = barCanvasRef.current.height;
         const barWidth = 40;
@@ -29,9 +45,9 @@ export default function Analytics({ user }: { user: UserProfile }) {
         
         data.forEach((val, i) => {
           const x = 40 + i * (barWidth + gap);
-          const barHeight = (val / 100) * (height - 60);
+          const maxVal = Math.max(...data, 1);
+          const barHeight = (val / maxVal) * (height - 60);
           
-          // Gradient
           const grad = ctx.createLinearGradient(0, height - 40, 0, height - 40 - barHeight);
           grad.addColorStop(0, '#00f2ff22');
           grad.addColorStop(1, '#00f2ff');
@@ -41,46 +57,57 @@ export default function Analytics({ user }: { user: UserProfile }) {
           ctx.roundRect(x, height - 40 - barHeight, barWidth, barHeight, [4, 4, 0, 0]);
           ctx.fill();
 
-          // Label
           ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
           ctx.font = '10px JetBrains Mono';
           ctx.textAlign = 'center';
-          ctx.fillText(labels[i], x + barWidth / 2, height - 20);
+          ctx.fillText(days[i], x + barWidth / 2, height - 20);
         });
       }
     }
 
-    // Draw Pie Chart
+    // Draw Pie Chart (Subject Distribution from Tasks)
     if (pieCanvasRef.current) {
       const ctx = pieCanvasRef.current.getContext('2d');
       if (ctx) {
-        const data = [40, 30, 20, 10];
-        const colors = ['#00f2ff', '#bc13fe', '#f27d26', '#10b981'];
+        const subjects: Record<string, number> = {};
+        tasks.forEach((t: any) => {
+          subjects[t.subject] = (subjects[t.subject] || 0) + 1;
+        });
+
+        const data = Object.values(subjects);
+        const labels = Object.keys(subjects);
+        const colors = ['#00f2ff', '#bc13fe', '#f27d26', '#10b981', '#ef4444'];
         const centerX = pieCanvasRef.current.width / 2;
         const centerY = pieCanvasRef.current.height / 2;
         const radius = 80;
 
-        let startAngle = 0;
-        data.forEach((val, i) => {
-          const sliceAngle = (val / 100) * 2 * Math.PI;
-          
+        if (data.length === 0) {
+          ctx.clearRect(0, 0, pieCanvasRef.current.width, pieCanvasRef.current.height);
+          ctx.fillStyle = 'rgba(255,255,255,0.1)';
           ctx.beginPath();
-          ctx.moveTo(centerX, centerY);
-          ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
-          ctx.fillStyle = colors[i];
+          ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
           ctx.fill();
-          
-          startAngle += sliceAngle;
-        });
+        } else {
+          let startAngle = 0;
+          const total = data.reduce((a, b) => a + b, 0);
+          data.forEach((val, i) => {
+            const sliceAngle = (val / total) * 2 * Math.PI;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fill();
+            startAngle += sliceAngle;
+          });
+        }
 
-        // Inner hole for donut effect
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius * 0.6, 0, 2 * Math.PI);
         ctx.fillStyle = '#0a0a0c';
         ctx.fill();
       }
     }
-  }, []);
+  }, [tasks, blocks]);
 
   return (
     <div className="h-full flex flex-col gap-6">
@@ -122,18 +149,13 @@ export default function Analytics({ user }: { user: UserProfile }) {
             </div>
           </div>
           <div className="mt-6 space-y-2">
-            {[
-              { label: 'Physics', val: '40%', color: 'bg-neon-blue' },
-              { label: 'Maths', val: '30%', color: 'bg-neon-purple' },
-              { label: 'Chemistry', val: '20%', color: 'bg-orange-500' },
-              { label: 'Mock Tests', val: '10%', color: 'bg-green-500' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
+            {Object.keys(tasks.reduce((acc: any, t: any) => ({ ...acc, [t.subject]: true }), {})).map((subject, i) => (
+              <div key={subject} className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest">
                 <div className="flex items-center gap-2">
-                  <div className={cn("w-2 h-2 rounded-full", item.color)} />
-                  <span className="text-white/40">{item.label}</span>
+                  <div className={cn("w-2 h-2 rounded-full", ['bg-neon-blue', 'bg-neon-purple', 'bg-orange-500', 'bg-green-500', 'bg-red-500'][i % 5])} />
+                  <span className="text-white/40">{subject}</span>
                 </div>
-                <span>{item.val}</span>
+                <span>{Math.round((tasks.filter((t: any) => t.subject === subject).length / tasks.length) * 100)}%</span>
               </div>
             ))}
           </div>

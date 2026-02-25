@@ -2,7 +2,8 @@ import { UserID, UserProfile } from "../types";
 
 export const HARDCODED_USERS: Record<UserID, { name: string; avatar: string }> = {
   AV: { name: "AV", avatar: "A" },
-  GN: { name: "GN", avatar: "G" }
+  GN: { name: "GN", avatar: "G" },
+  AI_ORACLE: { name: "ORACLE", avatar: "O" }
 };
 
 export const APP_PASSWORD = "CHAUHAN@2009";

@@ -9,28 +9,26 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export default function StudyPactModule({ user }: { user: UserProfile }) {
-  const [pact, setPact] = useState<StudyPact>(() => {
-    const saved = localStorage.getItem('warroom_pact');
-    return saved ? JSON.parse(saved) : {
-      id: '1',
-      goal: 'Clear JEE Advanced with <1000 Rank',
-      minHoursPerDay: 10,
-      weeklyTarget: 70,
-      penalty: 'No Gaming for 1 Week + 100 Pushups',
-      startDate: Date.now(),
-      active: true
-    };
-  });
+import { useSync } from '../lib/sync';
 
-  React.useEffect(() => {
-    localStorage.setItem('warroom_pact', JSON.stringify(pact));
-  }, [pact]);
+export default function StudyPactModule({ user }: { user: UserProfile }) {
+  const [pacts, syncPacts] = useSync<StudyPact>('pact');
+  
+  const pact = pacts[0] || {
+    id: '1',
+    goal: 'Set your ultimate goal...',
+    minHoursPerDay: 0,
+    weeklyTarget: 0,
+    penalty: 'Define your penalty...',
+    startDate: Date.now(),
+    active: false
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [editPact, setEditPact] = useState({ ...pact });
 
   const handleSave = () => {
-    setPact(editPact);
+    syncPacts([editPact]);
     setIsEditing(false);
   };
 
@@ -156,19 +154,16 @@ export default function StudyPactModule({ user }: { user: UserProfile }) {
             <div className="glass-card p-6">
               <h4 className="text-xs font-bold uppercase tracking-widest text-white/40 mb-6">Pact History</h4>
               <div className="space-y-4">
-                {[
-                  { week: 'Week 12', status: 'success', hours: 72 },
-                  { week: 'Week 11', status: 'success', hours: 70.5 },
-                  { week: 'Week 10', status: 'failed', hours: 64 },
-                ].map((item, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
-                    <div className="flex items-center gap-3">
-                      {item.status === 'success' ? <CheckCircle2 size={16} className="text-green-500" /> : <XCircle size={16} className="text-red-500" />}
-                      <span className="text-sm font-bold">{item.week}</span>
-                    </div>
-                    <span className="text-xs font-mono text-white/40">{item.hours}h</span>
+                {pact.active ? (
+                  <div className="p-4 bg-green-500/5 border border-green-500/20 rounded-xl text-center">
+                    <p className="text-xs text-green-500 font-bold">Pact is Active</p>
+                    <p className="text-[10px] text-white/50 mt-1">History will appear here after the first weekly review.</p>
                   </div>
-                ))}
+                ) : (
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-xl text-center">
+                    <p className="text-xs text-white/30">No history yet</p>
+                  </div>
+                )}
               </div>
             </div>
 

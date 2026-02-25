@@ -37,6 +37,8 @@ export default function SharedCalendar({ user }: { user: UserProfile }) {
   const endDate = endOfWeek(monthEnd);
   const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+
   const addEvent = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEvent.title) return;
@@ -57,6 +59,7 @@ export default function SharedCalendar({ user }: { user: UserProfile }) {
 
   const deleteEvent = (id: string) => {
     syncEvents(events.filter(e => e.id !== id));
+    setSelectedEvent(null);
   };
 
   return (
@@ -116,8 +119,9 @@ export default function SharedCalendar({ user }: { user: UserProfile }) {
                 {dayEvents.map(event => (
                   <div 
                     key={event.id}
+                    onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
                     className={cn(
-                      "text-[9px] p-1.5 rounded border truncate cursor-pointer",
+                      "text-[9px] p-1.5 rounded border truncate cursor-pointer hover:scale-105 transition-transform",
                       event.type === 'test' ? "bg-red-500/10 border-red-500/30 text-red-400" :
                       event.type === 'deadline' ? "bg-orange-500/10 border-orange-500/30 text-orange-400" :
                       "bg-neon-blue/10 border-neon-blue/30 text-neon-blue"
@@ -131,6 +135,69 @@ export default function SharedCalendar({ user }: { user: UserProfile }) {
           );
         })}
       </div>
+
+      {/* Event Details Modal */}
+      <AnimatePresence>
+        {selectedEvent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-md glass-card p-8 border-white/10"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <div className={cn(
+                    "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest inline-block mb-2",
+                    selectedEvent.type === 'test' ? "bg-red-500/20 text-red-400" :
+                    selectedEvent.type === 'deadline' ? "bg-orange-500/20 text-orange-400" :
+                    "bg-neon-blue/20 text-neon-blue"
+                  )}>
+                    {selectedEvent.type}
+                  </div>
+                  <h4 className="text-2xl font-display font-bold">{selectedEvent.title}</h4>
+                </div>
+                <button onClick={() => setSelectedEvent(null)} className="text-white/40 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="space-y-4 mb-8">
+                <div className="flex items-center gap-3 text-white/60">
+                  <CalendarIcon size={18} />
+                  <span className="text-sm">{format(new Date(selectedEvent.date), 'EEEE, MMMM do')}</span>
+                </div>
+                <div className="flex items-center gap-3 text-white/60">
+                  <Clock size={18} />
+                  <span className="text-sm">{selectedEvent.time}</span>
+                </div>
+                {selectedEvent.description && (
+                  <div className="p-4 bg-white/5 rounded-xl text-sm text-white/70 leading-relaxed">
+                    {selectedEvent.description}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => deleteEvent(selectedEvent.id)}
+                  className="flex-1 py-3 bg-red-500/10 text-red-400 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete Event</span>
+                </button>
+                <button 
+                  onClick={() => setSelectedEvent(null)}
+                  className="flex-1 py-3 bg-white/5 text-white font-bold rounded-xl hover:bg-white/10 transition-all text-xs uppercase tracking-widest"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Add Event Modal */}
       <AnimatePresence>

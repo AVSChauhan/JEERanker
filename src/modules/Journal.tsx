@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Lock, Plus, Calendar, Search, Trash2, Edit3, ShieldCheck } from 'lucide-react';
+import { format } from 'date-fns';
+import { encrypt, decrypt } from '../lib/crypto';
+import { APP_PASSWORD } from '../lib/auth';
 import { UserProfile } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -21,6 +24,37 @@ export default function Journal({ user }: { user: UserProfile }) {
     if (password === 'CHAUHAN@2009') {
       setIsLocked(false);
     }
+  };
+
+  const [selectedEntry, setSelectedEntry] = useState<any>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState({ title: '', content: '', mood: '😊' });
+
+  const addEntry = () => {
+    const newEntry = {
+      id: Date.now().toString(),
+      title: 'New Entry',
+      content: '',
+      date: format(new Date(), 'MMM dd, yyyy'),
+      mood: '😊',
+      timestamp: Date.now()
+    };
+    syncEntries([newEntry, ...entries]);
+    setSelectedEntry(newEntry);
+    setIsEditing(true);
+    setEditContent({ title: newEntry.title, content: newEntry.content, mood: newEntry.mood });
+  };
+
+  const saveEntry = () => {
+    const updated = entries.map((e: any) => e.id === selectedEntry.id ? { ...e, ...editContent } : e);
+    syncEntries(updated);
+    setIsEditing(false);
+    setSelectedEntry({ ...selectedEntry, ...editContent });
+  };
+
+  const deleteEntry = (id: string) => {
+    syncEntries(entries.filter((e: any) => e.id !== id));
+    if (selectedEntry?.id === id) setSelectedEntry(null);
   };
 
   if (isLocked) {
@@ -62,7 +96,10 @@ export default function Journal({ user }: { user: UserProfile }) {
     <div className="h-full flex gap-6">
       <div className="w-80 flex flex-col gap-4">
         <div className="glass-card p-4 space-y-4">
-          <button className="w-full py-3 bg-neon-purple text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-all text-sm uppercase tracking-widest">
+          <button 
+            onClick={addEntry}
+            className="w-full py-3 bg-neon-purple text-black font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-white transition-all text-sm uppercase tracking-widest"
+          >
             <Plus size={18} />
             <span>New Entry</span>
           </button>
@@ -84,8 +121,23 @@ export default function Journal({ user }: { user: UserProfile }) {
             </button>
           </div>
           <div className="flex-1 overflow-y-auto p-2 custom-scrollbar space-y-2">
-            {entries.map((entry) => (
-              <button key={entry.id} className="w-full text-left p-4 rounded-xl bg-white/5 border border-transparent hover:border-white/10 transition-all group">
+            {entries.length === 0 && (
+              <div className="p-8 text-center opacity-20">
+                <p className="text-[10px] uppercase font-bold tracking-widest">No entries yet</p>
+              </div>
+            )}
+            {entries.map((entry: any) => (
+              <button 
+                key={entry.id} 
+                onClick={() => {
+                  setSelectedEntry(entry);
+                  setIsEditing(false);
+                }}
+                className={cn(
+                  "w-full text-left p-4 rounded-xl border transition-all group",
+                  selectedEntry?.id === entry.id ? "bg-neon-purple/10 border-neon-purple/30" : "bg-white/5 border-transparent hover:border-white/10"
+                )}
+              >
                 <div className="flex justify-between items-start mb-1">
                   <span className="text-[10px] font-mono text-white/30">{entry.date}</span>
                   <span>{entry.mood}</span>
@@ -98,31 +150,84 @@ export default function Journal({ user }: { user: UserProfile }) {
       </div>
 
       <div className="flex-1 glass-card flex flex-col overflow-hidden">
-        <div className="p-8 border-b border-white/10 flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Calendar size={16} className="text-neon-purple" />
-              <span className="text-xs font-mono text-white/40">March 20, 2024</span>
-              <span className="text-2xl">😫</span>
+        {selectedEntry ? (
+          <>
+            <div className="p-8 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <Calendar size={16} className="text-neon-purple" />
+                  <span className="text-xs font-mono text-white/40">{selectedEntry.date}</span>
+                  {isEditing ? (
+                    <select 
+                      value={editContent.mood}
+                      onChange={(e) => setEditContent({ ...editContent, mood: e.target.value })}
+                      className="bg-transparent text-xl focus:outline-none"
+                    >
+                      {['😊', '😫', '🔥', '🧠', '😴', '🚀'].map(m => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-2xl">{selectedEntry.mood}</span>
+                  )}
+                </div>
+                {isEditing ? (
+                  <input 
+                    value={editContent.title}
+                    onChange={(e) => setEditContent({ ...editContent, title: e.target.value })}
+                    className="bg-transparent text-3xl font-display font-bold w-full focus:outline-none text-neon-purple"
+                  />
+                ) : (
+                  <h3 className="text-3xl font-display font-bold">{selectedEntry.title}</h3>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {isEditing ? (
+                  <button 
+                    onClick={saveEntry}
+                    className="p-3 bg-neon-purple text-black rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(188,19,254,0.3)]"
+                  >
+                    <ShieldCheck size={20} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditContent({ title: selectedEntry.title, content: selectedEntry.content, mood: selectedEntry.mood });
+                    }}
+                    className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-white transition-all"
+                  >
+                    <Edit3 size={20} />
+                  </button>
+                )}
+                <button 
+                  onClick={() => deleteEntry(selectedEntry.id)}
+                  className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-400 transition-all"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
             </div>
-            <h3 className="text-3xl font-display font-bold">Feeling Burnt Out</h3>
+            <div className="flex-1 p-12 overflow-y-auto custom-scrollbar">
+              {isEditing ? (
+                <textarea 
+                  value={editContent.content}
+                  onChange={(e) => setEditContent({ ...editContent, content: e.target.value })}
+                  className="w-full h-full bg-transparent resize-none focus:outline-none text-lg leading-relaxed text-white/70"
+                  placeholder="Write your thoughts here..."
+                />
+              ) : (
+                <div className="max-w-2xl mx-auto space-y-6 text-lg leading-relaxed text-white/70 whitespace-pre-wrap">
+                  {selectedEntry.content || "No content in this entry."}
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
+            <Lock size={64} className="mb-4" />
+            <h3 className="font-display font-bold text-xl uppercase tracking-widest">Select an Entry</h3>
+            <p className="text-sm">Your private war journal is locked</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-white transition-all">
-              <Edit3 size={20} />
-            </button>
-            <button className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-400 transition-all">
-              <Trash2 size={20} />
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 p-12 overflow-y-auto custom-scrollbar">
-          <div className="max-w-2xl mx-auto space-y-6 text-lg leading-relaxed text-white/70">
-            <p>Today was tough. Rotational motion is killing me. I spent 4 hours on a single problem set and still couldn't get the torque calculations right.</p>
-            <p>I feel like I'm falling behind GN. They finished the entire module while I'm stuck here. Need to talk to them tomorrow and maybe do a shared session on this topic.</p>
-            <p>Note to self: Take a break. JEE is a marathon, not a sprint. Don't let one bad day break the streak.</p>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

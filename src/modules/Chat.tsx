@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, Shield, Lock, Trash2, Smile, Paperclip, Search } from 'lucide-react';
+import { Send, Shield, Lock, Trash2, Smile, Paperclip, Search, Brain, Eye } from 'lucide-react';
 import { UserProfile, ChatMessage, UserID } from '../types';
 import { encrypt, decrypt } from '../lib/crypto';
 import { APP_PASSWORD } from '../lib/auth';
@@ -40,7 +40,8 @@ export default function Chat({ user }: { user: UserProfile }) {
       text: encryptedText,
       timestamp: Date.now(),
     };
-    syncMessages(userMsg);
+    const updatedMessages = [...messages, userMsg];
+    syncMessages(updatedMessages);
 
     // 2. If research mode, trigger AI with grounding
     if (isResearchMode) {
@@ -65,12 +66,18 @@ export default function Chat({ user }: { user: UserProfile }) {
           text: encryptedAiText,
           timestamp: Date.now(),
         };
-        syncMessages(aiMsg);
+        syncMessages([...updatedMessages, aiMsg]);
       } catch (error) {
         console.error("AI Error:", error);
       } finally {
         setIsGenerating(false);
       }
+    }
+  };
+
+  const clearChat = () => {
+    if (confirm('Are you sure you want to clear all messages?')) {
+      syncMessages([]);
     }
   };
 
@@ -133,6 +140,13 @@ export default function Chat({ user }: { user: UserProfile }) {
               <Eye size={16} />
             </button>
           </div>
+
+          <button 
+            onClick={clearChat}
+            className="p-3 bg-white/5 rounded-xl text-white/40 hover:text-red-400 transition-all border border-white/10"
+          >
+            <Trash2 size={18} />
+          </button>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-export type UserID = 'AV' | 'GN';
+export type UserID = 'AV' | 'GN' | 'AI_ORACLE';
 
 export interface UserProfile {
   uid: string;

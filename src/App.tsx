@@ -66,45 +66,48 @@ const LoginScreen = ({ onLogin }: { onLogin: (name: string, id: UserID) => void 
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-purple/10 blur-[120px] rounded-full" />
 
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md glass-card p-8 relative z-10"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-md glass-card p-10 relative z-10 border-white/10"
       >
-        <div className="text-center mb-8">
+        <div className="text-center mb-10">
+          <div className="w-16 h-16 bg-neon-blue/20 rounded-2xl flex items-center justify-center text-neon-blue mx-auto mb-4 border border-neon-blue/30">
+            <Shield size={32} />
+          </div>
           <h1 className="text-4xl font-display font-bold mb-2 tracking-tighter">
             WAR<span className="text-neon-blue">ROOM</span>
           </h1>
-          <p className="text-white/50 text-sm uppercase tracking-widest">JEE Buddy OS v1.0</p>
+          <p className="text-white/40 text-[10px] uppercase tracking-[0.3em] font-bold">Strategic Command OS</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wider text-white/40 ml-1">Agent Identity</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 ml-1">Agent Identity</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-blue transition-colors"
-              placeholder="Enter your name..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm focus:outline-none focus:border-neon-blue transition-all"
+              placeholder="Enter your callsign..."
               required
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wider text-white/40 ml-1">Access Code</label>
+            <label className="text-[10px] font-bold uppercase tracking-widest text-white/40 ml-1">Access Code</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-neon-blue transition-colors"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-sm focus:outline-none focus:border-neon-blue transition-all"
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60"
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-white transition-colors"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -112,18 +115,18 @@ const LoginScreen = ({ onLogin }: { onLogin: (name: string, id: UserID) => void 
           </div>
 
           {error && (
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-400 text-xs text-center"
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-red-500/10 border border-red-500/20 p-3 rounded-lg text-red-400 text-[10px] font-bold uppercase tracking-widest text-center"
             >
               {error}
-            </motion.p>
+            </motion.div>
           )}
 
           <button
             type="submit"
-            className="w-full py-4 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all uppercase tracking-widest text-sm"
+            className="w-full py-5 bg-neon-blue text-black font-bold rounded-xl hover:bg-white transition-all uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(0,242,255,0.2)]"
           >
             Initialize System
           </button>
@@ -153,17 +156,22 @@ export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isChatUnlocked, setIsChatUnlocked] = useState(false);
+  const [isChatPopupOpen, setIsChatPopupOpen] = useState(false);
+  const [isStealthMode, setIsStealthMode] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [logoPressTimer, setLogoPressTimer] = useState<NodeJS.Timeout | null>(null);
 
-  // Load user from local storage on mount (for persistence)
+  // Load user and settings from local storage
   useEffect(() => {
     const savedUser = localStorage.getItem('warroom_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
+    const savedStealth = localStorage.getItem('warroom_stealth');
+    if (savedUser) setUser(JSON.parse(savedUser));
+    if (savedStealth) setIsStealthMode(JSON.parse(savedStealth));
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('warroom_stealth', JSON.stringify(isStealthMode));
+  }, [isStealthMode]);
 
   const handleLogin = (name: string, id: UserID) => {
     const profile = getInitialProfile(id);
@@ -179,7 +187,7 @@ export default function App() {
 
   const handleLogoMouseDown = () => {
     const timer = setTimeout(() => {
-      setIsChatUnlocked(!isChatUnlocked);
+      setIsChatPopupOpen(true);
     }, 3000);
     setLogoPressTimer(timer);
   };
@@ -234,7 +242,9 @@ export default function App() {
               <Zap className="text-black" size={24} />
             </div>
             {!isSidebarCollapsed && (
-              <span className="font-display font-bold text-xl tracking-tighter">WARROOM</span>
+              <span className="font-display font-bold text-xl tracking-tighter">
+                {isStealthMode ? 'STUDYBUDDY' : 'WARROOM'}
+              </span>
             )}
           </div>
 
@@ -258,21 +268,7 @@ export default function App() {
               </button>
             ))}
 
-            {/* Secret Chat Tab */}
-            {isChatUnlocked && (
-              <button
-                onClick={() => setActiveTab(chatItem.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all group border border-neon-purple/20 bg-neon-purple/5",
-                  activeTab === chatItem.id 
-                    ? "bg-neon-purple/20 text-neon-purple border-neon-purple/40" 
-                    : "text-neon-purple/50 hover:bg-neon-purple/10 hover:text-neon-purple"
-                )}
-              >
-                <chatItem.icon size={20} className={cn(activeTab === chatItem.id ? "text-neon-purple" : "group-hover:text-neon-purple")} />
-                {!isSidebarCollapsed && <span className="font-medium text-sm">{chatItem.label}</span>}
-              </button>
-            )}
+            {/* Secret Chat Tab (Removed from sidebar, now popup only) */}
           </nav>
 
           <div className="p-4 mt-auto">
@@ -303,17 +299,26 @@ export default function App() {
 
         {/* Header */}
         {!isFocusMode && (
-          <header className="h-20 flex items-center justify-between px-8">
+          <header 
+            className="h-20 flex items-center justify-between px-8 select-none"
+            onMouseDown={handleLogoMouseDown}
+            onMouseUp={handleLogoMouseUp}
+            onMouseLeave={handleLogoMouseUp}
+            onTouchStart={handleLogoMouseDown}
+            onTouchEnd={handleLogoMouseUp}
+          >
             <div className="flex items-center gap-6">
               <button 
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                onClick={(e) => { e.stopPropagation(); setIsSidebarCollapsed(!isSidebarCollapsed); }}
                 className="p-2 hover:bg-white/5 rounded-lg transition-colors"
               >
                 <div className="w-5 h-0.5 bg-white/50 mb-1" />
                 <div className="w-5 h-0.5 bg-white/50 mb-1" />
                 <div className="w-3 h-0.5 bg-white/50" />
               </button>
-              <h2 className="text-xl font-display font-semibold capitalize">{activeTab.replace('-', ' ')}</h2>
+              <h2 className="text-xl font-display font-semibold capitalize">
+                {isStealthMode && activeTab === 'dashboard' ? 'Overview' : activeTab.replace('-', ' ')}
+              </h2>
             </div>
 
             <div className="flex items-center gap-4 mr-32">
@@ -361,10 +366,42 @@ export default function App() {
               {activeTab === 'pact' && <StudyPact user={user} />}
               {activeTab === 'predictor' && <PerformancePredictor user={user} />}
               {activeTab === 'analytics' && <Analytics user={user} />}
-              {activeTab === 'settings' && <SettingsModule user={user} />}
+              {activeTab === 'settings' && <SettingsModule user={user} isStealthMode={isStealthMode} setIsStealthMode={setIsStealthMode} />}
             </motion.div>
           </AnimatePresence>
         </div>
+
+        {/* Chat Popup */}
+        <AnimatePresence>
+          {isChatPopupOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="w-full max-w-4xl h-[80vh] glass-card flex flex-col border-neon-purple/30 shadow-[0_0_50px_rgba(168,85,247,0.2)]"
+              >
+                <div className="p-4 border-b border-white/10 flex items-center justify-between bg-neon-purple/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-neon-purple/20 rounded-lg flex items-center justify-center text-neon-purple border border-neon-purple/30">
+                      <MessageSquare size={18} />
+                    </div>
+                    <h4 className="font-display font-bold uppercase tracking-widest text-sm">Secure Communication Channel</h4>
+                  </div>
+                  <button 
+                    onClick={() => setIsChatPopupOpen(false)}
+                    className="p-2 hover:bg-white/10 rounded-lg text-white/40 hover:text-white transition-all"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden p-6">
+                  <Chat user={user} />
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );

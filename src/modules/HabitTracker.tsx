@@ -145,14 +145,21 @@ export default function HabitTracker({ user }: { user: UserProfile }) {
           <div className="glass-card p-6 bg-gradient-to-br from-neon-purple/5 to-transparent">
             <div className="flex items-center gap-3 mb-6">
               <Trophy size={24} className="text-neon-purple" />
-              <h4 className="font-bold text-sm uppercase tracking-widest">Consistency King</h4>
+              <h4 className="font-bold text-sm uppercase tracking-widest">Consistency Score</h4>
             </div>
             <div className="text-center py-4">
-              <p className="text-4xl font-display font-bold text-neon-purple">94%</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mt-2">Weekly Completion</p>
+              <p className="text-4xl font-display font-bold text-neon-purple">
+                {habits.length > 0 
+                  ? Math.round((habits.filter(h => h.completedToday).length / habits.length) * 100) 
+                  : 0}%
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-white/30 mt-2">Today's Completion</p>
             </div>
             <div className="mt-6 h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div className="h-full bg-neon-purple w-[94%]" />
+              <div 
+                className="h-full bg-neon-purple transition-all duration-1000" 
+                style={{ width: `${habits.length > 0 ? (habits.filter(h => h.completedToday).length / habits.length) * 100 : 0}%` }} 
+              />
             </div>
           </div>
 
@@ -163,16 +170,20 @@ export default function HabitTracker({ user }: { user: UserProfile }) {
             </div>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-white/40">Longest Streak</span>
-                <span className="font-mono font-bold text-neon-blue">42 Days</span>
+                <span className="text-xs text-white/40">Total Habits</span>
+                <span className="font-mono font-bold text-neon-blue">{habits.length}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-white/40">Total Check-ins</span>
-                <span className="font-mono font-bold text-neon-blue">1,240</span>
+                <span className="text-xs text-white/40">Active Streaks</span>
+                <span className="font-mono font-bold text-neon-blue">
+                  {habits.filter(h => h.streak > 0).length}
+                </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-white/40">Best Subject</span>
-                <span className="font-mono font-bold text-neon-blue">Physics</span>
+                <span className="text-xs text-white/40">Best Streak</span>
+                <span className="font-mono font-bold text-neon-blue">
+                  {habits.length > 0 ? Math.max(...habits.map(h => h.streak)) : 0} Days
+                </span>
               </div>
             </div>
           </div>

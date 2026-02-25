@@ -13,6 +13,7 @@ import {
   Pause,
   RotateCcw
 } from 'lucide-react';
+import { format } from 'date-fns';
 import { UserProfile } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -21,9 +22,36 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+import { useSync } from '../lib/sync';
+
 export default function Dashboard({ user }: { user: UserProfile }) {
+  const [tasks] = useSync<any>('tasks');
+  const [habits] = useSync<any>('habits');
+  const [blocks] = useSync<any>('blocks');
+  const [pacts] = useSync<any>('pact');
+  const [calendarEvents] = useSync<any>('calendar');
+
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
+
+  const pact = pacts[0] || { minHoursPerDay: 0, goal: 'No active pact' };
+
+  const completedTasks = tasks.filter((t: any) => t.completed).length;
+  const totalTasks = tasks.length;
+  const habitStreak = habits.length > 0 ? Math.max(...habits.map((h: any) => h.streak)) : 0;
+  
+  const todayBlocks = blocks.filter((b: any) => b.date === format(new Date(), 'yyyy-MM-dd'));
+  
+  const upcomingReminders = calendarEvents
+    .filter((e: any) => new Date(e.date) >= new Date())
+    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 3);
+
+  const studyHours = todayBlocks.reduce((acc: number, b: any) => {
+    const start = parseInt(b.startTime.split(':')[0]);
+    const end = parseInt(b.endTime.split(':')[0]);
+    return acc + (end - start);
+  }, 0);
 
   useEffect(() => {
     let interval: any;
@@ -54,10 +82,10 @@ export default function Dashboard({ user }: { user: UserProfile }) {
       {/* Stats Row */}
       <div className="md:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: 'Study Hours', value: '8.5h', icon: Clock, color: 'text-neon-blue' },
-          { label: 'Tasks Done', value: '12/15', icon: CheckSquare, color: 'text-green-400' },
-          { label: 'Current Streak', value: '14 Days', icon: Flame, color: 'text-orange-400' },
-          { label: 'Focus Score', value: '92%', icon: Zap, color: 'text-neon-purple' },
+          { label: 'Study Hours', value: `${studyHours}h`, icon: Clock, color: 'text-neon-blue' },
+          { label: 'Tasks Done', value: `${completedTasks}/${totalTasks}`, icon: CheckSquare, color: 'text-green-400' },
+          { label: 'Best Streak', value: `${habitStreak} Days`, icon: Flame, color: 'text-orange-400' },
+          { label: 'Focus Score', value: `${totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%`, icon: Zap, color: 'text-neon-purple' },
         ].map((stat, i) => (
           <div key={i} className="glass-card p-4 flex flex-col gap-2 hover:border-white/20 transition-all cursor-default group">
             <stat.icon size={20} className={cn(stat.color, "group-hover:scale-110 transition-transform")} />
@@ -109,18 +137,18 @@ export default function Dashboard({ user }: { user: UserProfile }) {
         <div className="glass-card p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-display font-bold text-lg">War Plan: Today</h3>
-            <button className="text-xs text-neon-blue hover:underline">View Full Scheduler</button>
           </div>
           <div className="space-y-3">
-            {[
-              { time: '14:00 - 16:00', subject: 'Physics', topic: 'Rotational Dynamics', status: 'upcoming' },
-              { time: '16:30 - 18:30', subject: 'Maths', topic: 'Complex Numbers', status: 'upcoming' },
-              { time: '19:00 - 21:00', subject: 'Chemistry', topic: 'Thermodynamics', status: 'upcoming' },
-            ].map((item, i) => (
+            {todayBlocks.length === 0 && (
+              <div className="p-8 text-center opacity-20">
+                <p className="text-[10px] uppercase font-bold tracking-widest">No sessions planned for today</p>
+              </div>
+            )}
+            {todayBlocks.map((item: any, i: number) => (
               <div key={i} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-white/10 transition-all group">
                 <div className="w-16 text-center">
-                  <p className="text-[10px] text-white/40 font-mono">{item.time.split(' - ')[0]}</p>
-                  <p className="text-[10px] text-white/20 font-mono">{item.time.split(' - ')[1]}</p>
+                  <p className="text-[10px] text-white/40 font-mono">{item.startTime}</p>
+                  <p className="text-[10px] text-white/20 font-mono">{item.endTime}</p>
                 </div>
                 <div className="h-10 w-px bg-white/10" />
                 <div className="flex-1">
@@ -129,11 +157,8 @@ export default function Dashboard({ user }: { user: UserProfile }) {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="px-2 py-1 rounded bg-white/5 text-[9px] font-bold uppercase tracking-widest text-white/40">
-                    {item.status}
+                    {item.type}
                   </div>
-                  <button className="p-2 text-white/20 hover:text-neon-blue">
-                    <Eye size={16} />
-                  </button>
                 </div>
               </div>
             ))}
@@ -192,32 +217,22 @@ export default function Dashboard({ user }: { user: UserProfile }) {
               <p className="font-bold text-lg">{user.id === 'AV' ? 'GN' : 'AV'}</p>
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-xs text-green-400 font-medium tracking-wide">Deep Work Mode</p>
+                <p className="text-xs text-green-400 font-medium tracking-wide">Connected</p>
               </div>
             </div>
           </div>
           <div className="space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold">
-                <span className="text-white/40">Daily Target</span>
-                <span className="text-neon-purple">78% Complete</span>
+                <span className="text-white/40">Goal Progress</span>
+                <span className="text-neon-purple">{totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}%</span>
               </div>
               <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
-                  animate={{ width: '78%' }}
+                  animate={{ width: `${totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0}%` }}
                   className="h-full bg-neon-purple shadow-[0_0_10px_rgba(188,19,254,0.5)]" 
                 />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center">
-                <p className="text-[10px] text-white/40 uppercase mb-1">Session</p>
-                <p className="font-mono font-bold">42m</p>
-              </div>
-              <div className="p-3 bg-white/5 rounded-xl border border-white/5 text-center">
-                <p className="text-[10px] text-white/40 uppercase mb-1">Streak</p>
-                <p className="font-mono font-bold">21d</p>
               </div>
             </div>
           </div>
@@ -232,25 +247,52 @@ export default function Dashboard({ user }: { user: UserProfile }) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/30">— Vince Lombardi</p>
         </div>
 
+        {/* Upcoming Reminders */}
+        <div className="glass-card p-6 border-neon-blue/20">
+          <h3 className="font-display font-bold text-sm uppercase tracking-widest text-neon-blue mb-6 flex items-center gap-2">
+            <CalendarIcon size={16} />
+            Upcoming Reminders
+          </h3>
+          <div className="space-y-4">
+            {upcomingReminders.length === 0 && (
+              <p className="text-[10px] text-white/30 text-center py-4">No upcoming events</p>
+            )}
+            {upcomingReminders.map((event: any) => (
+              <div key={event.id} className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/5">
+                <div className={cn(
+                  "w-1 h-8 rounded-full",
+                  event.type === 'test' ? "bg-red-500" :
+                  event.type === 'deadline' ? "bg-orange-500" :
+                  "bg-neon-blue"
+                )} />
+                <div>
+                  <p className="text-xs font-bold">{event.title}</p>
+                  <p className="text-[10px] text-white/40">{format(new Date(event.date), 'MMM do')} • {event.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Pact Status */}
         <div className="glass-card p-6 border-orange-500/20">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display font-bold text-sm uppercase tracking-widest text-orange-400">Study Pact</h3>
             <CalendarIcon size={16} className="text-orange-400" />
           </div>
-          <p className="text-xs text-white/60 mb-4">Goal: 10 Hours Daily Minimum</p>
+          <p className="text-xs text-white/60 mb-4">Goal: {pact.goal}</p>
           <div className="flex items-center justify-center py-2">
             <div className="relative w-24 h-24">
               <svg className="w-full h-full -rotate-90">
                 <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/5" />
-                <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray="251" strokeDashoffset="50" className="text-orange-500" />
+                <circle cx="48" cy="48" r="40" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray="251" strokeDashoffset={251 - (251 * (pact.active ? 1 : 0))} className="text-orange-500" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center flex-col">
-                <span className="text-xl font-bold">80%</span>
+                <span className="text-xl font-bold">{pact.active ? '100%' : '0%'}</span>
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-center text-white/40 mt-2 uppercase tracking-widest">Pact is Secure</p>
+          <p className="text-[10px] text-center text-white/40 mt-2 uppercase tracking-widest">{pact.active ? 'Pact is Secure' : 'No Active Pact'}</p>
         </div>
       </div>
     </div>

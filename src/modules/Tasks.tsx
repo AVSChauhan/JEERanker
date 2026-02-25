@@ -26,7 +26,7 @@ export default function Tasks({ user }: { user: UserProfile }) {
   const toggleTaskStatus = (id: string) => {
     const updatedTasks = tasks.map(t => {
       if (t.id === id) {
-        return { ...t, status: t.status === 'done' ? 'todo' : 'done' };
+        return { ...t, status: (t.status === 'done' ? 'todo' : 'done') as 'todo' | 'in-progress' | 'done' };
       }
       return t;
     });

@@ -19,7 +19,9 @@ async function startServer() {
     habits: [],
     blocks: [],
     calendar: [],
-    journal: []
+    journal: [],
+    pact: [],
+    resources: []
   };
 
   // WebSocket logic

@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { StreamChat } from 'stream-chat';
+import "dotenv/config";
 
 async function startServer() {
   const app = express();

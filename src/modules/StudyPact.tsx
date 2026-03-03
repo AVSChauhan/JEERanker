@@ -9,13 +9,13 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-import { useSync } from '../lib/sync';
+import { useFirestore } from '../lib/firestore';
 
 export default function StudyPactModule({ user, isStealthMode }: { user: UserProfile, isStealthMode?: boolean }) {
-  const [pacts, syncPacts] = useSync<StudyPact>('pact');
+  const { data: pacts, updateItem, addItem } = useFirestore<StudyPact>('pacts');
   
-  const pact = pacts[0] || {
-    id: '1',
+  const defaultPact: StudyPact = {
+    id: 'main-pact',
     goal: 'Set your ultimate goal...',
     minHoursPerDay: 0,
     weeklyTarget: 0,
@@ -24,11 +24,22 @@ export default function StudyPactModule({ user, isStealthMode }: { user: UserPro
     active: false
   };
 
+  const pact = pacts.find(p => p.id === 'main-pact') || defaultPact;
+
   const [isEditing, setIsEditing] = useState(false);
   const [editPact, setEditPact] = useState({ ...pact });
 
-  const handleSave = () => {
-    syncPacts([editPact]);
+  // Sync editPact when pact updates from Firestore
+  React.useEffect(() => {
+    setEditPact({ ...pact });
+  }, [pact.goal, pact.minHoursPerDay, pact.weeklyTarget, pact.penalty]);
+
+  const handleSave = async () => {
+    if (pacts.find(p => p.id === 'main-pact')) {
+      await updateItem('main-pact', editPact);
+    } else {
+      await addItem({ ...editPact, id: 'main-pact' });
+    }
     setIsEditing(false);
   };
 

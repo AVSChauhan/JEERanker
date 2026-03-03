@@ -165,13 +165,18 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
       
       try {
         // Get token from our backend
-        const response = await fetch('/api/chat/token', {
+        const tokenResponse = await fetch('/api/chat/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id }),
         });
         
-        const { token } = await response.json();
+        if (!tokenResponse.ok) {
+          const errorData = await tokenResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || `Backend returned ${tokenResponse.status}`);
+        }
+
+        const { token } = await tokenResponse.json();
         
         await chatClient.connectUser(
           {
@@ -205,7 +210,7 @@ export default function Chat({ user, isStealthMode }: { user: UserProfile, isSte
 
       } catch (err: any) {
         console.error("Stream Init Error:", err);
-        setError("Failed to connect to chat service.");
+        setError(`Failed to connect to chat service: ${err.message}`);
       }
     };
 
